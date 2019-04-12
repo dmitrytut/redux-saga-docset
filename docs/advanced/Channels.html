@@ -1,0 +1,245 @@
+
+<!DOCTYPE HTML>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+		<meta name=viewport content='width=device-width,user-scalable=no,minimum-scale=1.0,maximum-scale=1.0' />
+		<link media="all" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/github-markdown-css/2.9.0/github-markdown.min.css" type="text/css" />
+		<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/github.min.css" type="text/css" media="all" />
+    <title></title>
+</head>
+<body>
+	<div class="markdown-body">
+		<h1 id="using-channels">Using Channels</h1>
+<p>Until now we've used the <code>take</code> and <code>put</code> effects to communicate with the Redux Store. Channels generalize those Effects to communicate with external event sources or between Sagas themselves. They can also be used to queue specific actions from the Store.</p>
+<p>In this section, we'll see:</p>
+<ul>
+<li><p>How to use the <code>yield actionChannel</code> Effect to buffer specific actions from the Store.</p></li>
+<li><p>How to use the <code>eventChannel</code> factory function to connect <code>take</code> Effects to external event sources.</p></li>
+<li><p>How to create a channel using the generic <code>channel</code> factory function and use it in <code>take</code>/<code>put</code> Effects to communicate between two Sagas.</p></li>
+</ul>
+<h2 id="using-the-actionchannel-effect">Using the <code>actionChannel</code> Effect</h2>
+<p>Let's review the canonical example:</p>
+<pre><code class="javascript language-javascript"><span class="hljs-keyword">import</span> { take, fork, ... } <span class="hljs-keyword">from</span> <span class="hljs-string">'redux-saga/effects'</span>
+
+<span class="hljs-function"><span class="hljs-keyword">function</span>* <span class="hljs-title">watchRequests</span>(<span class="hljs-params"></span>) </span>{
+  <span class="hljs-keyword">while</span> (<span class="hljs-literal">true</span>) {
+    <span class="hljs-keyword">const</span> {payload} = <span class="hljs-keyword">yield</span> take(<span class="hljs-string">'REQUEST'</span>)
+    <span class="hljs-keyword">yield</span> fork(handleRequest, payload)
+  }
+}
+
+<span class="hljs-function"><span class="hljs-keyword">function</span>* <span class="hljs-title">handleRequest</span>(<span class="hljs-params">payload</span>) </span>{ ... }</code></pre>
+<p>The above example illustrates the typical <em>watch-and-fork</em> pattern. The <code>watchRequests</code> saga is using <code>fork</code> to avoid blocking and thus not missing any action from the store. A <code>handleRequest</code> task is created on each <code>REQUEST</code> action. So if there are many actions fired at a rapid rate there can be many <code>handleRequest</code> tasks executing concurrently.</p>
+<p>Imagine now that our requirement is as follows: we want to process <code>REQUEST</code> serially. If we have at any moment four actions, we want to handle the first <code>REQUEST</code> action, then only after finishing this action we process the second action and so on…</p>
+<p>So we want to <em>queue</em> all non-processed actions, and once we're done with processing the current request, we get the next message from the queue.</p>
+<p>Redux-Saga provides a little helper Effect <code>actionChannel</code>, which can handle this for us. Let's see how we can rewrite the previous example with it:</p>
+<pre><code class="javascript language-javascript"><span class="hljs-keyword">import</span> { take, actionChannel, call, ... } <span class="hljs-keyword">from</span> <span class="hljs-string">'redux-saga/effects'</span>
+
+<span class="hljs-function"><span class="hljs-keyword">function</span>* <span class="hljs-title">watchRequests</span>(<span class="hljs-params"></span>) </span>{
+  <span class="hljs-comment">// 1- Create a channel for request actions</span>
+  <span class="hljs-keyword">const</span> requestChan = <span class="hljs-keyword">yield</span> actionChannel(<span class="hljs-string">'REQUEST'</span>)
+  <span class="hljs-keyword">while</span> (<span class="hljs-literal">true</span>) {
+    <span class="hljs-comment">// 2- take from the channel</span>
+    <span class="hljs-keyword">const</span> {payload} = <span class="hljs-keyword">yield</span> take(requestChan)
+    <span class="hljs-comment">// 3- Note that we're using a blocking call</span>
+    <span class="hljs-keyword">yield</span> call(handleRequest, payload)
+  }
+}
+
+<span class="hljs-function"><span class="hljs-keyword">function</span>* <span class="hljs-title">handleRequest</span>(<span class="hljs-params">payload</span>) </span>{ ... }</code></pre>
+<p>The first thing is to create the action channel. We use <code>yield actionChannel(pattern)</code> where pattern is interpreted using the same rules we mentioned previously with <code>take(pattern)</code>. The difference between the 2 forms is that <code>actionChannel</code> <strong>can buffer incoming messages</strong> if the Saga is not yet ready to take them (e.g. blocked on an API call).</p>
+<p>Next is the <code>yield take(requestChan)</code>. Besides usage with a <code>pattern</code> to take specific actions from the Redux Store, <code>take</code> can also be used with channels (above we created a channel object from specific Redux actions). The <code>take</code> will block the Saga until a message is available on the channel. The take may also resume immediately if there is a message stored in the underlying buffer.</p>
+<p>The important thing to note is how we're using a blocking <code>call</code>. The Saga will remain blocked until <code>call(handleRequest)</code> returns. But meanwhile, if other <code>REQUEST</code> actions are dispatched while the Saga is still blocked, they will queued internally by <code>requestChan</code>. When the Saga resumes from <code>call(handleRequest)</code> and executes the next <code>yield take(requestChan)</code>, the take will resolve with the queued message.</p>
+<p>By default, <code>actionChannel</code> buffers all incoming messages without limit. If you want a more control over the buffering, you can supply a Buffer argument to the effect creator. Redux-Saga provides some common buffers (none, dropping, sliding) but you can also supply your own buffer implementation. <a href="../api#buffers">See API docs</a> for more details.</p>
+<p>For example if you want to handle only the most recent five items you can use:</p>
+<pre><code class="javascript language-javascript"><span class="hljs-keyword">import</span> { buffers } <span class="hljs-keyword">from</span> <span class="hljs-string">'redux-saga'</span>
+<span class="hljs-keyword">import</span> { actionChannel } <span class="hljs-keyword">from</span> <span class="hljs-string">'redux-saga/effects'</span>
+
+<span class="hljs-function"><span class="hljs-keyword">function</span>* <span class="hljs-title">watchRequests</span>(<span class="hljs-params"></span>) </span>{
+  <span class="hljs-keyword">const</span> requestChan = <span class="hljs-keyword">yield</span> actionChannel(<span class="hljs-string">'REQUEST'</span>, buffers.sliding(<span class="hljs-number">5</span>))
+  ...
+}</code></pre>
+<h2 id="using-the-eventchannel-factory-to-connect-to-external-events">Using the <code>eventChannel</code> factory to connect to external events</h2>
+<p>Like <code>actionChannel</code> (Effect), <code>eventChannel</code> (a factory function, not an Effect) creates a Channel for events but from event sources other than the Redux Store.</p>
+<p>This basic example creates a Channel from an interval:</p>
+<pre><code class="javascript language-javascript"><span class="hljs-keyword">import</span> { eventChannel, END } <span class="hljs-keyword">from</span> <span class="hljs-string">'redux-saga'</span>
+
+<span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">countdown</span>(<span class="hljs-params">secs</span>) </span>{
+  <span class="hljs-keyword">return</span> eventChannel(<span class="hljs-function"><span class="hljs-params">emitter</span> =&gt;</span> {
+      <span class="hljs-keyword">const</span> iv = setInterval(<span class="hljs-function"><span class="hljs-params">()</span> =&gt;</span> {
+        secs -= <span class="hljs-number">1</span>
+        <span class="hljs-keyword">if</span> (secs &gt; <span class="hljs-number">0</span>) {
+          emitter(secs)
+        } <span class="hljs-keyword">else</span> {
+          <span class="hljs-comment">// this causes the channel to close</span>
+          emitter(END)
+        }
+      }, <span class="hljs-number">1000</span>);
+      <span class="hljs-comment">// The subscriber must return an unsubscribe function</span>
+      <span class="hljs-keyword">return</span> <span class="hljs-function"><span class="hljs-params">()</span> =&gt;</span> {
+        clearInterval(iv)
+      }
+    }
+  )
+}</code></pre>
+<p>The first argument in <code>eventChannel</code> is a <em>subscriber</em> function. The role of the subscriber is to initialize the external event source (above using <code>setInterval</code>), then routes all incoming events from the source to the channel by invoking the supplied <code>emitter</code>. In the above example we're invoking <code>emitter</code> on each second.</p>
+<blockquote>
+  <p>Note: You need to sanitize your event sources as to not pass null or undefined through the event channel. While it's fine to pass numbers through, we'd recommend structuring your event channel data like your redux actions. <code>{ number }</code> over <code>number</code>.</p>
+</blockquote>
+<p>Note also the invocation <code>emitter(END)</code>. We use this to notify any channel consumer that the channel has been closed, meaning no other messages will come through this channel.</p>
+<p>Let's see how we can use this channel from our Saga. (This is taken from the cancellable-counter example in the repo.)</p>
+<pre><code class="javascript language-javascript"><span class="hljs-keyword">import</span> { take, put, call } <span class="hljs-keyword">from</span> <span class="hljs-string">'redux-saga/effects'</span>
+<span class="hljs-keyword">import</span> { eventChannel, END } <span class="hljs-keyword">from</span> <span class="hljs-string">'redux-saga'</span>
+
+<span class="hljs-comment">// creates an event Channel from an interval of seconds</span>
+<span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">countdown</span>(<span class="hljs-params">seconds</span>) </span>{ ... }
+
+<span class="hljs-keyword">export</span> <span class="hljs-function"><span class="hljs-keyword">function</span>* <span class="hljs-title">saga</span>(<span class="hljs-params"></span>) </span>{
+  <span class="hljs-keyword">const</span> chan = <span class="hljs-keyword">yield</span> call(countdown, value)
+  <span class="hljs-keyword">try</span> {    
+    <span class="hljs-keyword">while</span> (<span class="hljs-literal">true</span>) {
+      <span class="hljs-comment">// take(END) will cause the saga to terminate by jumping to the finally block</span>
+      <span class="hljs-keyword">let</span> seconds = <span class="hljs-keyword">yield</span> take(chan)
+      <span class="hljs-built_in">console</span>.log(<span class="hljs-string">`countdown: <span class="hljs-subst">${seconds}</span>`</span>)
+    }
+  } <span class="hljs-keyword">finally</span> {
+    <span class="hljs-built_in">console</span>.log(<span class="hljs-string">'countdown terminated'</span>)
+  }
+}</code></pre>
+<p>So the Saga is yielding a <code>take(chan)</code>. This causes the Saga to block until a message is put on the channel. In our example above, it corresponds to when we invoke <code>emitter(secs)</code>. Note also we're executing the whole <code>while (true) {...}</code> loop inside a <code>try/finally</code> block. When the interval terminates, the countdown function closes the event channel by invoking <code>emitter(END)</code>. Closing a channel has the effect of terminating all Sagas blocked on a <code>take</code> from that channel. In our example, terminating the Saga will cause it to jump to its <code>finally</code> block (if provided, otherwise the Saga terminates).</p>
+<p>The subscriber returns an <code>unsubscribe</code> function. This is used by the channel to unsubscribe before the event source complete. Inside a Saga consuming messages from an event channel, if we want to <em>exit early</em> before the event source complete (e.g. Saga has been cancelled) you can call <code>chan.close()</code> to close the channel and unsubscribe from the source.</p>
+<p>For example, we can make our Saga support cancellation:</p>
+<pre><code class="javascript language-javascript"><span class="hljs-keyword">import</span> { take, put, call, cancelled } <span class="hljs-keyword">from</span> <span class="hljs-string">'redux-saga/effects'</span>
+<span class="hljs-keyword">import</span> { eventChannel, END } <span class="hljs-keyword">from</span> <span class="hljs-string">'redux-saga'</span>
+
+<span class="hljs-comment">// creates an event Channel from an interval of seconds</span>
+<span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">countdown</span>(<span class="hljs-params">seconds</span>) </span>{ ... }
+
+<span class="hljs-keyword">export</span> <span class="hljs-function"><span class="hljs-keyword">function</span>* <span class="hljs-title">saga</span>(<span class="hljs-params"></span>) </span>{
+  <span class="hljs-keyword">const</span> chan = <span class="hljs-keyword">yield</span> call(countdown, value)
+  <span class="hljs-keyword">try</span> {    
+    <span class="hljs-keyword">while</span> (<span class="hljs-literal">true</span>) {
+      <span class="hljs-keyword">let</span> seconds = <span class="hljs-keyword">yield</span> take(chan)
+      <span class="hljs-built_in">console</span>.log(<span class="hljs-string">`countdown: <span class="hljs-subst">${seconds}</span>`</span>)
+    }
+  } <span class="hljs-keyword">finally</span> {
+    <span class="hljs-keyword">if</span> (<span class="hljs-keyword">yield</span> cancelled()) {
+      chan.close()
+      <span class="hljs-built_in">console</span>.log(<span class="hljs-string">'countdown cancelled'</span>)
+    }    
+  }
+}</code></pre>
+<p>Here is another example of how you can use event channels to pass WebSocket events into your saga (e.g.: using socket.io library).<br />
+Suppose you are waiting for a server message <code>ping</code> then reply with a <code>pong</code> message after some delay.</p>
+<pre><code class="javascript language-javascript"><span class="hljs-keyword">import</span> { take, put, call, apply, delay } <span class="hljs-keyword">from</span> <span class="hljs-string">'redux-saga/effects'</span>
+<span class="hljs-keyword">import</span> { eventChannel } <span class="hljs-keyword">from</span> <span class="hljs-string">'redux-saga'</span>
+<span class="hljs-keyword">import</span> { createWebSocketConnection } <span class="hljs-keyword">from</span> <span class="hljs-string">'./socketConnection'</span>
+
+<span class="hljs-comment">// this function creates an event channel from a given socket</span>
+<span class="hljs-comment">// Setup subscription to incoming `ping` events</span>
+<span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">createSocketChannel</span>(<span class="hljs-params">socket</span>) </span>{
+  <span class="hljs-comment">// `eventChannel` takes a subscriber function</span>
+  <span class="hljs-comment">// the subscriber function takes an `emit` argument to put messages onto the channel</span>
+  <span class="hljs-keyword">return</span> eventChannel(<span class="hljs-function"><span class="hljs-params">emit</span> =&gt;</span> {
+
+    <span class="hljs-keyword">const</span> pingHandler = <span class="hljs-function">(<span class="hljs-params">event</span>) =&gt;</span> {
+      <span class="hljs-comment">// puts event payload into the channel</span>
+      <span class="hljs-comment">// this allows a Saga to take this payload from the returned channel</span>
+      emit(event.payload)
+    }
+
+    <span class="hljs-keyword">const</span> errorHandler = <span class="hljs-function">(<span class="hljs-params">errorEvent</span>) =&gt;</span> {
+      <span class="hljs-comment">// create an Error object and put it into the channel</span>
+      emit(<span class="hljs-keyword">new</span> <span class="hljs-built_in">Error</span>(errorEvent.reason))
+    }
+
+    <span class="hljs-comment">// setup the subscription</span>
+    socket.on(<span class="hljs-string">'ping'</span>, pingHandler)
+    socket.on(<span class="hljs-string">'error'</span>, errorHandler)
+
+    <span class="hljs-comment">// the subscriber must return an unsubscribe function</span>
+    <span class="hljs-comment">// this will be invoked when the saga calls `channel.close` method</span>
+    <span class="hljs-keyword">const</span> unsubscribe = <span class="hljs-function"><span class="hljs-params">()</span> =&gt;</span> {
+      socket.off(<span class="hljs-string">'ping'</span>, pingHandler)
+    }
+
+    <span class="hljs-keyword">return</span> unsubscribe
+  })
+}
+
+<span class="hljs-comment">// reply with a `pong` message by invoking `socket.emit('pong')`</span>
+<span class="hljs-function"><span class="hljs-keyword">function</span>* <span class="hljs-title">pong</span>(<span class="hljs-params">socket</span>) </span>{
+  <span class="hljs-keyword">yield</span> delay(<span class="hljs-number">5000</span>)
+  <span class="hljs-keyword">yield</span> apply(socket, socket.emit, [<span class="hljs-string">'pong'</span>]) <span class="hljs-comment">// call `emit` as a method with `socket` as context</span>
+}
+
+<span class="hljs-keyword">export</span> <span class="hljs-function"><span class="hljs-keyword">function</span>* <span class="hljs-title">watchOnPings</span>(<span class="hljs-params"></span>) </span>{
+  <span class="hljs-keyword">const</span> socket = <span class="hljs-keyword">yield</span> call(createWebSocketConnection)
+  <span class="hljs-keyword">const</span> socketChannel = <span class="hljs-keyword">yield</span> call(createSocketChannel, socket)
+
+  <span class="hljs-keyword">while</span> (<span class="hljs-literal">true</span>) {
+    <span class="hljs-keyword">try</span> {
+      <span class="hljs-comment">// An error from socketChannel will cause the saga jump to the catch block</span>
+      <span class="hljs-keyword">const</span> payload = <span class="hljs-keyword">yield</span> take(socketChannel)
+      <span class="hljs-keyword">yield</span> put({ <span class="hljs-attr">type</span>: INCOMING_PONG_PAYLOAD, payload })
+      <span class="hljs-keyword">yield</span> fork(pong, socket)
+    } <span class="hljs-keyword">catch</span>(err) {
+      <span class="hljs-built_in">console</span>.error(<span class="hljs-string">'socket error:'</span>, err)
+      <span class="hljs-comment">// socketChannel is still open in catch block</span>
+      <span class="hljs-comment">// if we want end the socketChannel, we need close it explicitly</span>
+      <span class="hljs-comment">// socketChannel.close()</span>
+    }
+  }
+}</code></pre>
+<blockquote>
+  <p>Note: messages on an eventChannel are not buffered by default. You have to provide a buffer to the eventChannel factory in order to specify buffering strategy for the channel (e.g. <code>eventChannel(subscriber, buffer)</code>).<br />
+  <a href="../api#buffers">See the API docs</a> for more info.</p>
+</blockquote>
+<p>In this WebSocket example, the socketChannel may emit an error when some socket error occurs, this will abort our <code>yield take(socketChannel)</code> waiting on this eventChannel. Note that emitting an error will not abort the channel by default, we need to close the channel explicitly if we want to end the channel after an error.</p>
+<h3 id="using-channels-to-communicate-between-sagas">Using channels to communicate between Sagas</h3>
+<p>Besides action channels and event channels. You can also directly create channels which are not connected to any source by default. You can then manually <code>put</code> on the channel. This is handy when you want to use a channel to communicate between sagas.</p>
+<p>To illustrate, let's review the former example of request handling.</p>
+<pre><code class="javascript language-javascript"><span class="hljs-keyword">import</span> { take, fork, ... } <span class="hljs-keyword">from</span> <span class="hljs-string">'redux-saga/effects'</span>
+
+<span class="hljs-function"><span class="hljs-keyword">function</span>* <span class="hljs-title">watchRequests</span>(<span class="hljs-params"></span>) </span>{
+  <span class="hljs-keyword">while</span> (<span class="hljs-literal">true</span>) {
+    <span class="hljs-keyword">const</span> {payload} = <span class="hljs-keyword">yield</span> take(<span class="hljs-string">'REQUEST'</span>)
+    <span class="hljs-keyword">yield</span> fork(handleRequest, payload)
+  }
+}
+
+<span class="hljs-function"><span class="hljs-keyword">function</span>* <span class="hljs-title">handleRequest</span>(<span class="hljs-params">payload</span>) </span>{ ... }</code></pre>
+<p>We saw that the watch-and-fork pattern allows handling multiple requests simultaneously, without limit on the number of worker tasks executing concurrently. Then, we used the <code>actionChannel</code> effect to limit the concurrency to one task at a time.</p>
+<p>So let's say that our requirement is to have a maximum of three tasks executing at the same time. When we get a request and there are less than three tasks executing, we process the request immediately, otherwise we queue the task and wait for one of the three <em>slots</em> to become free.</p>
+<p>Below is an example of a solution using channels:</p>
+<pre><code class="javascript language-javascript"><span class="hljs-keyword">import</span> { channel } <span class="hljs-keyword">from</span> <span class="hljs-string">'redux-saga'</span>
+<span class="hljs-keyword">import</span> { take, fork, ... } <span class="hljs-keyword">from</span> <span class="hljs-string">'redux-saga/effects'</span>
+
+<span class="hljs-function"><span class="hljs-keyword">function</span>* <span class="hljs-title">watchRequests</span>(<span class="hljs-params"></span>) </span>{
+  <span class="hljs-comment">// create a channel to queue incoming requests</span>
+  <span class="hljs-keyword">const</span> chan = <span class="hljs-keyword">yield</span> call(channel)
+
+  <span class="hljs-comment">// create 3 worker 'threads'</span>
+  <span class="hljs-keyword">for</span> (<span class="hljs-keyword">var</span> i = <span class="hljs-number">0</span>; i &lt; <span class="hljs-number">3</span>; i++) {
+    <span class="hljs-keyword">yield</span> fork(handleRequest, chan)
+  }
+
+  <span class="hljs-keyword">while</span> (<span class="hljs-literal">true</span>) {
+    <span class="hljs-keyword">const</span> {payload} = <span class="hljs-keyword">yield</span> take(<span class="hljs-string">'REQUEST'</span>)
+    <span class="hljs-keyword">yield</span> put(chan, payload)
+  }
+}
+
+<span class="hljs-function"><span class="hljs-keyword">function</span>* <span class="hljs-title">handleRequest</span>(<span class="hljs-params">chan</span>) </span>{
+  <span class="hljs-keyword">while</span> (<span class="hljs-literal">true</span>) {
+    <span class="hljs-keyword">const</span> payload = <span class="hljs-keyword">yield</span> take(chan)
+    <span class="hljs-comment">// process the request</span>
+  }
+}</code></pre>
+<p>In the above example, we create a channel using the <code>channel</code> factory. We get back a channel which by default buffers all messages we put on it (unless there is a pending taker, in which the taker is resumed immediately with the message).</p>
+<p>The <code>watchRequests</code> saga then forks three worker sagas. Note the created channel is supplied to all forked sagas. <code>watchRequests</code> will use this channel to <em>dispatch</em> work to the three worker sagas. On each <code>REQUEST</code> action the Saga will put the payload on the channel. The payload will then be taken by any <em>free</em> worker. Otherwise it will be queued by the channel until a worker Saga is ready to take it.</p>
+<p>All the three workers run a typical while loop. On each iteration, a worker will take the next request, or will block until a message is available. Note that this mechanism provides an automatic load-balancing between the 3 workers. Rapid workers are not slowed down by slow workers.</p>
+	</div>
+</body>
+</html>

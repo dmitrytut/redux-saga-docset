@@ -1,0 +1,88 @@
+
+<!DOCTYPE HTML>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+		<meta name=viewport content='width=device-width,user-scalable=no,minimum-scale=1.0,maximum-scale=1.0' />
+		<link media="all" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/github-markdown-css/2.9.0/github-markdown.min.css" type="text/css" />
+		<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/github.min.css" type="text/css" media="all" />
+    <title></title>
+</head>
+<body>
+	<div class="markdown-body">
+		<h1 id="troubleshooting">Troubleshooting</h1>
+<h3 id="app-freezes-after-adding-a-saga">App freezes after adding a saga</h3>
+<p>Make sure that you <code>yield</code> the effects from the generator function.</p>
+<p>Consider this example:</p>
+<pre><code class="js language-js"><span class="hljs-keyword">import</span> { take } <span class="hljs-keyword">from</span> <span class="hljs-string">'redux-saga/effects'</span>
+
+<span class="hljs-function"><span class="hljs-keyword">function</span>* <span class="hljs-title">logActions</span>(<span class="hljs-params"></span>) </span>{
+  <span class="hljs-keyword">while</span> (<span class="hljs-literal">true</span>) {
+    <span class="hljs-keyword">const</span> action = take() <span class="hljs-comment">// wrong</span>
+    <span class="hljs-built_in">console</span>.log(action)
+  }
+}</code></pre>
+<p>It will put the application into an infinite loop because <code>take()</code> only creates a description of the effect. Unless you <code>yield</code> it for the middleware to execute, the <code>while</code> loop will behave like a regular <code>while</code> loop, and freeze your application.</p>
+<p>Adding <code>yield</code> will pause the generator and return control to the Redux Saga middleware which will execute the effect. In case of <code>take()</code>, Redux Saga will wait for the next action matching the pattern, and only then will resume the generator.</p>
+<p>To fix the example above, <code>yield</code> the effect returned by <code>take()</code>:</p>
+<pre><code class="js language-js"><span class="hljs-keyword">import</span> { take } <span class="hljs-keyword">from</span> <span class="hljs-string">'redux-saga/effects'</span>
+
+<span class="hljs-function"><span class="hljs-keyword">function</span>* <span class="hljs-title">logActions</span>(<span class="hljs-params"></span>) </span>{
+  <span class="hljs-keyword">while</span> (<span class="hljs-literal">true</span>) {
+    <span class="hljs-keyword">const</span> action = <span class="hljs-keyword">yield</span> take() <span class="hljs-comment">// correct</span>
+    <span class="hljs-built_in">console</span>.log(action)
+  }
+}</code></pre>
+<h3 id="my-saga-is-missing-dispatched-actions">My Saga is missing dispatched actions</h3>
+<p>Make sure the Saga is not blocked on some effect. When a Saga is waiting for an Effect to<br />
+resolve, it will not be able to take dispatched actions until the Effect is resolved.</p>
+<p>For example, consider this example</p>
+<pre><code class="javascript language-javascript"><span class="hljs-function"><span class="hljs-keyword">function</span>* <span class="hljs-title">watchRequestActions</span>(<span class="hljs-params"></span>) </span>{
+  <span class="hljs-keyword">while</span> (<span class="hljs-literal">true</span>) {
+    <span class="hljs-title">const</span> {<span class="hljs-built_in">url</span>, params} = <span class="hljs-keyword">yield</span> take(<span class="hljs-string">'REQUEST'</span>)
+    <span class="hljs-keyword">yield</span> call(handleRequestAction, <span class="hljs-built_in">url</span>, params) <span class="hljs-comment">// The Saga will block here</span>
+  }
+}
+
+<span class="hljs-function"><span class="hljs-keyword">function</span>* <span class="hljs-title">handleRequestAction</span>(<span class="hljs-params">url, params</span>) </span>{
+  <span class="hljs-keyword">const</span> response = <span class="hljs-keyword">yield</span> call(someRemoteApi, <span class="hljs-built_in">url</span>, params)
+  <span class="hljs-keyword">yield</span> put(someAction(response))
+}</code></pre>
+<p>When <code>watchRequestActions</code> performs <code>yield call(handleRequestAction, url, params)</code>, it'll wait<br />
+for <code>handleRequestAction</code> until it terminates an returns before continuing on the next<br />
+<code>yield take</code>. For example suppose we have this sequence of events</p>
+<pre><code>UI                     watchRequestActions             handleRequestAction
+-----------------------------------------------------------------------------
+<span class="hljs-params">...</span><span class="hljs-params">...</span><span class="hljs-params">...</span><span class="hljs-params">...</span><span class="hljs-params">...</span><span class="hljs-params">...</span><span class="hljs-params">...</span>..<span class="hljs-keyword">take</span>(<span class="hljs-string">'REQUEST'</span>)<span class="hljs-params">...</span><span class="hljs-params">...</span><span class="hljs-params">...</span><span class="hljs-params">...</span><span class="hljs-params">...</span><span class="hljs-params">...</span><span class="hljs-params">...</span><span class="hljs-params">...</span><span class="hljs-params">...</span><span class="hljs-params">...</span><span class="hljs-params">...</span><span class="hljs-params">...</span><span class="hljs-params">...</span>
+dispatch(REQUEST)<span class="hljs-params">...</span><span class="hljs-params">...</span>call(handleRequestAction)<span class="hljs-params">...</span><span class="hljs-params">...</span>.call(someRemoteApi)<span class="hljs-params">...</span> Wait server resp.
+<span class="hljs-params">...</span><span class="hljs-params">...</span><span class="hljs-params">...</span><span class="hljs-params">...</span><span class="hljs-params">...</span><span class="hljs-params">...</span><span class="hljs-params">...</span><span class="hljs-params">...</span><span class="hljs-params">...</span><span class="hljs-params">...</span><span class="hljs-params">...</span><span class="hljs-params">...</span><span class="hljs-params">...</span><span class="hljs-params">...</span><span class="hljs-params">...</span><span class="hljs-params">...</span><span class="hljs-params">...</span><span class="hljs-params">...</span><span class="hljs-params">...</span><span class="hljs-params">...</span><span class="hljs-params">...</span><span class="hljs-params">...</span><span class="hljs-params">...</span><span class="hljs-params">...</span><span class="hljs-params">...</span>..
+<span class="hljs-params">...</span><span class="hljs-params">...</span><span class="hljs-params">...</span><span class="hljs-params">...</span><span class="hljs-params">...</span><span class="hljs-params">...</span><span class="hljs-params">...</span><span class="hljs-params">...</span><span class="hljs-params">...</span><span class="hljs-params">...</span><span class="hljs-params">...</span><span class="hljs-params">...</span><span class="hljs-params">...</span><span class="hljs-params">...</span><span class="hljs-params">...</span><span class="hljs-params">...</span><span class="hljs-params">...</span><span class="hljs-params">...</span><span class="hljs-params">...</span><span class="hljs-params">...</span><span class="hljs-params">...</span><span class="hljs-params">...</span><span class="hljs-params">...</span><span class="hljs-params">...</span><span class="hljs-params">...</span>..
+dispatch(REQUEST)<span class="hljs-params">...</span><span class="hljs-params">...</span><span class="hljs-params">...</span><span class="hljs-params">...</span><span class="hljs-params">...</span><span class="hljs-params">...</span><span class="hljs-params">...</span><span class="hljs-params">...</span><span class="hljs-params">...</span><span class="hljs-params">...</span><span class="hljs-params">...</span><span class="hljs-params">...</span><span class="hljs-params">...</span><span class="hljs-params">...</span><span class="hljs-params">...</span><span class="hljs-params">...</span><span class="hljs-params">...</span><span class="hljs-params">...</span><span class="hljs-params">...</span><span class="hljs-params">...</span> Action missed!!
+<span class="hljs-params">...</span><span class="hljs-params">...</span><span class="hljs-params">...</span><span class="hljs-params">...</span><span class="hljs-params">...</span><span class="hljs-params">...</span><span class="hljs-params">...</span><span class="hljs-params">...</span><span class="hljs-params">...</span><span class="hljs-params">...</span><span class="hljs-params">...</span><span class="hljs-params">...</span><span class="hljs-params">...</span><span class="hljs-params">...</span><span class="hljs-params">...</span><span class="hljs-params">...</span><span class="hljs-params">...</span><span class="hljs-params">...</span><span class="hljs-params">...</span><span class="hljs-params">...</span><span class="hljs-params">...</span><span class="hljs-params">...</span><span class="hljs-params">...</span><span class="hljs-params">...</span><span class="hljs-params">...</span>..
+<span class="hljs-params">...</span><span class="hljs-params">...</span><span class="hljs-params">...</span><span class="hljs-params">...</span><span class="hljs-params">...</span><span class="hljs-params">...</span><span class="hljs-params">...</span><span class="hljs-params">...</span><span class="hljs-params">...</span><span class="hljs-params">...</span><span class="hljs-params">...</span><span class="hljs-params">...</span><span class="hljs-params">...</span><span class="hljs-params">...</span><span class="hljs-params">...</span><span class="hljs-params">...</span><span class="hljs-params">...</span><span class="hljs-params">...</span><span class="hljs-params">...</span><span class="hljs-params">...</span><span class="hljs-params">...</span><span class="hljs-params">...</span><span class="hljs-params">...</span><span class="hljs-params">...</span><span class="hljs-params">...</span>..
+<span class="hljs-params">...</span><span class="hljs-params">...</span><span class="hljs-params">...</span><span class="hljs-params">...</span><span class="hljs-params">...</span><span class="hljs-params">...</span><span class="hljs-params">...</span><span class="hljs-params">...</span><span class="hljs-params">...</span><span class="hljs-params">...</span><span class="hljs-params">...</span><span class="hljs-params">...</span><span class="hljs-params">...</span><span class="hljs-params">...</span><span class="hljs-params">...</span><span class="hljs-params">...</span><span class="hljs-params">...</span><span class="hljs-params">...</span>.put(someAction)<span class="hljs-params">...</span><span class="hljs-params">...</span>.
+<span class="hljs-params">...</span><span class="hljs-params">...</span><span class="hljs-params">...</span><span class="hljs-params">...</span><span class="hljs-params">...</span><span class="hljs-params">...</span><span class="hljs-params">...</span>..<span class="hljs-keyword">take</span>(<span class="hljs-string">'REQUEST'</span>)<span class="hljs-params">...</span><span class="hljs-params">...</span><span class="hljs-params">...</span><span class="hljs-params">...</span><span class="hljs-params">...</span><span class="hljs-params">...</span><span class="hljs-params">...</span><span class="hljs-params">...</span><span class="hljs-params">...</span><span class="hljs-params">...</span><span class="hljs-params">...</span><span class="hljs-params">...</span><span class="hljs-params">...</span> saga is resumed</code></pre>
+<p>As illustrated above, when a Saga is blocked on a <strong>blocking call</strong> then it will miss<br />
+all the actions dispatched in-between.</p>
+<p>To avoid blocking the Saga, you can use a <strong>non-blocking call</strong> using <code>fork</code> instead of <code>call</code></p>
+<pre><code class="javascript language-javascript"><span class="hljs-function"><span class="hljs-keyword">function</span>* <span class="hljs-title">watchRequestActions</span><span class="hljs-params">()</span> </span>{
+  <span class="hljs-keyword">while</span> (<span class="hljs-keyword">true</span>) {
+    <span class="hljs-keyword">const</span> {url, params} = <span class="hljs-keyword">yield</span> take(<span class="hljs-string">'REQUEST'</span>)
+    <span class="hljs-keyword">yield</span> fork(handleRequestAction, url, params) <span class="hljs-comment">// The Saga will resume immediately</span>
+  }
+}</code></pre>
+<h3 id="error-stack-for-errors-bubbling-to-root-saga-is-unreadable">Error stack for errors bubbling to root saga is unreadable</h3>
+<p>Tasks in saga are asynchronous by their nature, so we have to make some<br />
+additional work to show "saga stack" as it was a chain of synchronous calls. So staring with <code>redux-saga@v1</code>, when error bubbles to root saga, the library builds that "saga stack" and passes it as a property <code>sagaStack: string</code> of the second argument of <code>onError</code> callback (also see <a href="https://redux-saga.js.org/docs/api/index.html#createsagamiddlewareoptions">Middleware options</a>), so you can send it to your error tracking system or make other additional work.</p>
+<p>As a result, you can see something like this in your console.</p>
+<p><img src="./assets/saga-error-stack.png" alt="saga-error-stack.png" /></p>
+<p>If you want to have those "saga stack" with file names and line numbers for <strong>development purposes</strong>, you can add <a href="https://www.npmjs.com/package/babel-plugin-redux-saga">babel-plugin</a>, which allows you to have enhanced information.<br />
+Docs are available <a href="../packages/babel-plugin-redux-saga">here</a>.<br />
+For babel-plugin usage example check <a href="../examples/error-demo">this example</a></p>
+<p>After adding <code>babel-plugin-redux-saga</code> the same output looks like</p>
+<p><img src="./assets/saga-error-stack-with-babel-plugin.png" alt="saga-error-stack-with-babel-plugin.png" /></p>
+<p>Note: <a href="../examples/error-demo/test/sagas.js">It works for testing as well</a>, just make sure you (or your runner) run saga via <code>sagaMiddleware</code>.</p>
+<p><img src="./assets/saga-error-stack-node.png" alt="saga-error-stack-node.png" /></p>
+	</div>
+</body>
+</html>

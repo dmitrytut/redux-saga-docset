@@ -1,0 +1,34 @@
+
+<!DOCTYPE HTML>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+		<meta name=viewport content='width=device-width,user-scalable=no,minimum-scale=1.0,maximum-scale=1.0' />
+		<link media="all" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/github-markdown-css/2.9.0/github-markdown.min.css" type="text/css" />
+		<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/github.min.css" type="text/css" media="all" />
+    <title></title>
+</head>
+<body>
+	<div class="markdown-body">
+		<h1 id="sequencing-sagas-via-yield">Sequencing Sagas via <code>yield*</code></h1>
+<p>You can use the builtin <code>yield*</code> operator to compose multiple Sagas in a sequential way. This allows you to sequence your <em>macro-tasks</em> in a procedural style.</p>
+<pre><code class="javascript language-javascript"><span class="hljs-function"><span class="hljs-keyword">function</span>* <span class="hljs-title">playLevelOne</span>(<span class="hljs-params"></span>) </span>{ ... }
+
+<span class="hljs-function"><span class="hljs-keyword">function</span>* <span class="hljs-title">playLevelTwo</span>(<span class="hljs-params"></span>) </span>{ ... }
+
+<span class="hljs-function"><span class="hljs-keyword">function</span>* <span class="hljs-title">playLevelThree</span>(<span class="hljs-params"></span>) </span>{ ... }
+
+<span class="hljs-function"><span class="hljs-keyword">function</span>* <span class="hljs-title">game</span>(<span class="hljs-params"></span>) </span>{
+  <span class="hljs-keyword">const</span> score1 = <span class="hljs-keyword">yield</span>* playLevelOne()
+  <span class="hljs-keyword">yield</span> put(showScore(score1))
+
+  <span class="hljs-keyword">const</span> score2 = <span class="hljs-keyword">yield</span>* playLevelTwo()
+  <span class="hljs-keyword">yield</span> put(showScore(score2))
+
+  <span class="hljs-keyword">const</span> score3 = <span class="hljs-keyword">yield</span>* playLevelThree()
+  <span class="hljs-keyword">yield</span> put(showScore(score3))
+}</code></pre>
+<p>Note that using <code>yield*</code> will cause the JavaScript runtime to <em>spread</em> the whole sequence. The resulting iterator (from <code>game()</code>) will yield all values from the nested iterators. A more powerful alternative is to use the more generic middleware composition mechanism.</p>
+	</div>
+</body>
+</html>

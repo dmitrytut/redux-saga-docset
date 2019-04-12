@@ -1,0 +1,81 @@
+
+<!DOCTYPE HTML>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+		<meta name=viewport content='width=device-width,user-scalable=no,minimum-scale=1.0,maximum-scale=1.0' />
+		<link media="all" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/github-markdown-css/2.9.0/github-markdown.min.css" type="text/css" />
+		<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/github.min.css" type="text/css" media="all" />
+    <title></title>
+</head>
+<body>
+	<div class="markdown-body">
+		<h1 id="error-handling">Error handling</h1>
+<p>In this section we'll see how to handle the failure case from the previous example. Let's suppose that our API function <code>Api.fetch</code> returns a Promise which gets rejected when the remote fetch fails for some reason.</p>
+<p>We want to handle those errors inside our Saga by dispatching a <code>PRODUCTS_REQUEST_FAILED</code> action to the Store.</p>
+<p>We can catch errors inside the Saga using the familiar <code>try/catch</code> syntax.</p>
+<pre><code class="javascript language-javascript"><span class="hljs-keyword">import</span> Api <span class="hljs-keyword">from</span> <span class="hljs-string">'./path/to/api'</span>
+<span class="hljs-keyword">import</span> { call, put } <span class="hljs-keyword">from</span> <span class="hljs-string">'redux-saga/effects'</span>
+
+<span class="hljs-comment">// ...</span>
+
+<span class="hljs-function"><span class="hljs-keyword">function</span>* <span class="hljs-title">fetchProducts</span>(<span class="hljs-params"></span>) </span>{
+  <span class="hljs-keyword">try</span> {
+    <span class="hljs-keyword">const</span> products = <span class="hljs-keyword">yield</span> call(Api.fetch, <span class="hljs-string">'/products'</span>)
+    <span class="hljs-keyword">yield</span> put({ <span class="hljs-keyword">type</span>: <span class="hljs-string">'PRODUCTS_RECEIVED'</span>, products })
+  }
+  <span class="hljs-keyword">catch</span>(error) {
+    <span class="hljs-keyword">yield</span> put({ <span class="hljs-keyword">type</span>: <span class="hljs-string">'PRODUCTS_REQUEST_FAILED'</span>, error })
+  }
+}</code></pre>
+<p>In order to test the failure case, we'll use the <code>throw</code> method of the Generator</p>
+<pre><code class="javascript language-javascript"><span class="hljs-keyword">import</span> { call, put } from <span class="hljs-string">'redux-saga/effects'</span>
+<span class="hljs-keyword">import</span> Api from <span class="hljs-string">'...'</span>
+
+<span class="hljs-keyword">const</span> iterator = fetchProducts()
+
+<span class="hljs-comment">// expects a call instruction</span>
+<span class="hljs-keyword">assert</span>.deepEqual(
+  iterator.next().value,
+  call(Api.fetch, <span class="hljs-string">'/products'</span>),
+  <span class="hljs-string">"fetchProducts should yield an Effect call(Api.fetch, './products')"</span>
+)
+
+<span class="hljs-comment">// create a fake error</span>
+<span class="hljs-keyword">const</span> <span class="hljs-keyword">error</span> = {}
+
+<span class="hljs-comment">// expects a dispatch instruction</span>
+<span class="hljs-keyword">assert</span>.deepEqual(
+  iterator.<span class="hljs-keyword">throw</span>(<span class="hljs-keyword">error</span>).value,
+  put({ type: 'PRODUCTS_REQUEST_FAILED', <span class="hljs-keyword">error</span> }),
+  <span class="hljs-string">"fetchProducts should yield an Effect put({ type: 'PRODUCTS_REQUEST_FAILED', error })"</span>
+)</code></pre>
+<p>In this case, we're passing the <code>throw</code> method a fake error. This will cause the Generator to break the current flow and execute the catch block.</p>
+<p>Of course, you're not forced to handle your API errors inside <code>try</code>/<code>catch</code> blocks. You can also make your API service return a normal value with some error flag on it. For example, you can catch Promise rejections and map them to an object with an error field.</p>
+<pre><code class="javascript language-javascript"><span class="hljs-keyword">import</span> Api <span class="hljs-keyword">from</span> <span class="hljs-string">'./path/to/api'</span>
+<span class="hljs-keyword">import</span> { call, put } <span class="hljs-keyword">from</span> <span class="hljs-string">'redux-saga/effects'</span>
+
+<span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">fetchProductsApi</span>(<span class="hljs-params"></span>) </span>{
+  <span class="hljs-keyword">return</span> Api.fetch(<span class="hljs-string">'/products'</span>)
+    .then(<span class="hljs-function"><span class="hljs-params">response</span> =&gt;</span> ({ response }))
+    .catch(<span class="hljs-function"><span class="hljs-params">error</span> =&gt;</span> ({ error }))
+}
+
+<span class="hljs-function"><span class="hljs-keyword">function</span>* <span class="hljs-title">fetchProducts</span>(<span class="hljs-params"></span>) </span>{
+  <span class="hljs-keyword">const</span> { response, error } = <span class="hljs-keyword">yield</span> call(fetchProductsApi)
+  <span class="hljs-keyword">if</span> (response)
+    <span class="hljs-keyword">yield</span> put({ <span class="hljs-attr">type</span>: <span class="hljs-string">'PRODUCTS_RECEIVED'</span>, <span class="hljs-attr">products</span>: response })
+  <span class="hljs-keyword">else</span>
+    <span class="hljs-keyword">yield</span> put({ <span class="hljs-attr">type</span>: <span class="hljs-string">'PRODUCTS_REQUEST_FAILED'</span>, error })
+}</code></pre>
+<h2 id="onerror-hook">onError hook</h2>
+<p>Errors in forked tasks <a href="../api/README.md#error-propagation">bubble up to their parents</a><br />
+until it is caught or reaches the root saga.<br />
+If an error propagates to the root saga the whole saga tree is already <strong>terminated</strong>. The preferred approach, in this case, to use <a href="../api/README.md#error-propagation#createsagamiddlewareoptions">onError hook</a> to report an exception, inform a user about the problem and gracefully terminate your app.</p>
+<p>Why I cannot use <code>onError</code> hook as a global error handler?<br />
+Usually, there is no one-size-fits-all solution, as exceptions are context dependent. Consider <code>onError</code> hook as the last resort that helps you to handle <strong>unexpected</strong> errors.</p>
+<p>What if I don't want an error to bubble?<br />
+Consider to use safe wrapper. You can find examples <a href="https://github.com/redux-saga/redux-saga/issues/1250">here</a></p>
+	</div>
+</body>
+</html>

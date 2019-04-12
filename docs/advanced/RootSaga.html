@@ -1,0 +1,90 @@
+
+<!DOCTYPE HTML>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+		<meta name=viewport content='width=device-width,user-scalable=no,minimum-scale=1.0,maximum-scale=1.0' />
+		<link media="all" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/github-markdown-css/2.9.0/github-markdown.min.css" type="text/css" />
+		<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/github.min.css" type="text/css" media="all" />
+    <title></title>
+</head>
+<body>
+	<div class="markdown-body">
+		<h1 id="setting-up-your-root-saga">Setting up your root Saga</h1>
+<p>In the beginner tutorial it is shown that your root saga will look something like this</p>
+<pre><code class="javascript language-javascript"><span class="hljs-keyword">export</span> <span class="hljs-keyword">default</span> <span class="hljs-function"><span class="hljs-keyword">function</span>* <span class="hljs-title">rootSaga</span>(<span class="hljs-params"></span>) </span>{
+  <span class="hljs-keyword">yield</span> all([
+    helloSaga(),
+    watchIncrementAsync()
+  ])
+  <span class="hljs-comment">// code after all-effect</span>
+}</code></pre>
+<p>This is one of a few ways to implement your root. Here, the <code>all</code> effect is used with an array and your sagas will be executed in parallel. Other root implementations may help you better handle errors and more complex data flow.</p>
+<p>Contributor <a href="https://github.com/slorber">@slorber</a> mentioned in <a href="https://github.com/redux-saga/redux-saga/issues/760">issue#760</a> several other common root implementations. To start, there is one popular implementation that behaves similarly to the tutorial root saga behavior:</p>
+<pre><code class="javascript language-javascript"><span class="hljs-keyword">export</span> <span class="hljs-keyword">default</span> <span class="hljs-function"><span class="hljs-keyword">function</span>* <span class="hljs-title">root</span>(<span class="hljs-params"></span>) </span>{
+  <span class="hljs-keyword">yield</span> fork(saga1)
+  <span class="hljs-keyword">yield</span> fork(saga2)
+  <span class="hljs-keyword">yield</span> fork(saga3)
+  <span class="hljs-comment">// code after fork-effect</span>
+}</code></pre>
+<p>Using three unique <code>yield fork</code> will give back a task descriptor three times. The resulting behavior in your app is that all of your sub-sagas are started and executed in the same order. <code>fork</code> is non-blocking and so allows the <code>rootSaga</code> in these two cases to finish while the child sagas are kept running and blocked by their internal effects.</p>
+<p>The difference between one big all effect and several fork effects are that all effect is blocking, so <em>code after all-effect</em> (see comments in above code) is executed after all the children sagas completes, while fork effects are non-blocking and <em>code after fork-effect</em> gets executed right after yielding fork effects. Another difference is that you can get task descriptors when using fork effects, so in the subsequent code you can cancel/join the forked task via task descriptors.</p>
+<h2 id="nesting-fork-effects-in-all-effect">Nesting fork effects in all effect</h2>
+<pre><code class="javascript language-javascript"><span class="hljs-keyword">const</span> [task1, task2, task3] = yield all([ <span class="hljs-keyword">fork</span>(saga1), <span class="hljs-keyword">fork</span>(saga2), <span class="hljs-keyword">fork</span>(saga3) ])</code></pre>
+<p>There is another popular pattern when designing root saga: nesting <code>fork</code> effects in an <code>all</code> effect. By doing so, you can get an array of task descriptors, and the code after the <code>all</code> effect will be executed immediately because each <code>fork</code> effect is non-blocking and synchronously returning a task descriptor.</p>
+<p>Note that though <code>fork</code> effects are nested in an <code>all</code> effect, they are always connected to the parent task through the underlying forkQueue. Uncaught errors from forked tasks bubble to the parent task and thus abort it (and all its child tasks) - they cannot be caught by the parent task.</p>
+<h2 id="avoid-nesting-fork-effects-in-race-effect">Avoid nesting fork effects in race effect</h2>
+<pre><code class="javascript language-javascript">// <span class="hljs-type">DO</span> <span class="hljs-type">NOT</span> <span class="hljs-type">DO</span> <span class="hljs-type">THIS</span>. <span class="hljs-type">The</span> fork <span class="hljs-keyword">effect</span> always win the race immediately.
+yield race([
+  fork(someSaga),
+  take('<span class="hljs-type">SOME</span>-<span class="hljs-type">ACTION</span>'),
+  somePromise,
+])</code></pre>
+<p>On the other hand, <code>fork</code> effects in a <code>race</code> effect is most likely a bug. In the above code, since <code>fork</code> effects are non-blocking, they will always win the race immediately.</p>
+<h2 id="keeping-the-root-alive">Keeping the root alive</h2>
+<p>In practice, these implementations aren't terribly practical because your rootSaga will terminate on the first error in any individual child effect or saga and crash your whole app! Ajax requests in particular would put your app at the mercy of the status of any endpoints your app makes requests to.</p>
+<p><code>spawn</code> is an effect that will <em>disconnect</em> your child saga from its parent, allowing it to fail without crashing it's parent. Obviously, this does not relieve us from our responsibility as developers from still handling errors as they arise. In fact, it's possible that this might obscure certain failures from developer's eyes and cause problems further down the road.</p>
+<p>The <code>spawn</code> effect might be considered similar to <a href="https://reactjs.org/docs/error-boundaries.html">Error Boundaries</a> in React in that it can be used as extra safety measure at some level of the saga tree, cutting off a single feature or something and not letting the whole app crash. The difference is that there is no special syntax like the <code>componentDidCatch</code> that exists for React Error Boundaries. You must still write your own error handling and recovery code.</p>
+<pre><code class="javascript language-javascript"><span class="hljs-builtin-name">export</span><span class="hljs-built_in"> default </span>function* root() {
+  yield spawn(saga1)
+  yield spawn(saga2)
+  yield spawn(saga3)
+}</code></pre>
+<h2 id="keeping-everything-alive">Keeping everything alive</h2>
+<p>In some cases, it may be desirable for your sagas to be able to restart in the event of failure. The benefit is that your app and sagas may continue to work after failing, i.e. a saga that <code>yield takeEvery(myActionType)</code>. But we do not recommend this as a blanket solution to keep all sagas alive. It is very likely that it makes more sense to let your saga fail in sanely and predictably and handle/log your error.</p>
+<p>For example, <a href="https://github.com/ajwhite">@ajwhite</a> offered this scenario as a case where keeping your saga alive would cause more problems than it solves:</p>
+<pre><code class="javascript language-javascript"><span class="hljs-function"><span class="hljs-keyword">function</span>* <span class="hljs-title">sagaThatMayCrash</span> (<span class="hljs-params"></span>) </span>{
+  <span class="hljs-comment">// wait for something that happens _during app startup_</span>
+  <span class="hljs-keyword">yield</span> take(APP_INITIALIZED)
+
+  <span class="hljs-comment">// assume it dies here</span>
+  <span class="hljs-keyword">yield</span> call(doSomethingThatMayCrash)
+}</code></pre>
+<blockquote>
+  <p>If the sagaThatMayCrash is restarted, it will restart and wait for an action that only happens once when the application starts up. In this scenario, it restarts, but it never recovers.</p>
+</blockquote>
+<p>But for the specific situations that would benefit from starting, user <a href="https://github.com/granmoe">@granmoe</a> proposed an implementation like this in issue #570:</p>
+<pre><code class="javascript language-javascript"><span class="hljs-function"><span class="hljs-keyword">function</span>* <span class="hljs-title">rootSaga</span> (<span class="hljs-params"></span>) </span>{
+  <span class="hljs-keyword">const</span> sagas = [
+    saga1,
+    saga2,
+    saga3,
+  ];
+
+  <span class="hljs-keyword">yield</span> sagas.map(<span class="hljs-function"><span class="hljs-params">saga</span> =&gt;</span>
+    spawn(<span class="hljs-function"><span class="hljs-keyword">function</span>* (<span class="hljs-params"></span>) </span>{
+      <span class="hljs-keyword">while</span> (<span class="hljs-literal">true</span>) {
+        <span class="hljs-keyword">try</span> {
+          <span class="hljs-keyword">yield</span> call(saga)
+          <span class="hljs-keyword">break</span>
+        } <span class="hljs-keyword">catch</span> (e) {
+          <span class="hljs-built_in">console</span>.log(e)
+        }
+      }
+    })
+  );
+}</code></pre>
+<p>This strategy maps our child sagas to spawned generators (detaching them from the root parent) which start our sagas as subtasks in a <code>try</code> block. Our saga will run until termination, and then be automatically restarted. The <code>catch</code> block harmlessly handles any error that may have been thrown by, and terminated, our saga.</p>
+	</div>
+</body>
+</html>

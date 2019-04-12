@@ -1,0 +1,388 @@
+
+<!DOCTYPE HTML>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+		<meta name=viewport content='width=device-width,user-scalable=no,minimum-scale=1.0,maximum-scale=1.0' />
+		<link media="all" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/github-markdown-css/2.9.0/github-markdown.min.css" type="text/css" />
+		<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/github.min.css" type="text/css" media="all" />
+    <title></title>
+</head>
+<body>
+	<div class="markdown-body">
+		<h1 id="testing-sagas">Testing Sagas</h1>
+<p>There are two main ways to test Sagas: testing the saga generator function step-by-step or running the full saga and<br />
+asserting the side effects.</p>
+<h2 id="testing-the-saga-generator-function">Testing the Saga Generator Function</h2>
+<p>Suppose we have the following actions:</p>
+<pre><code class="javascript language-javascript"><span class="hljs-keyword">const</span> CHOOSE_COLOR = <span class="hljs-string">'CHOOSE_COLOR'</span>;
+<span class="hljs-keyword">const</span> CHANGE_UI = <span class="hljs-string">'CHANGE_UI'</span>;
+
+<span class="hljs-keyword">const</span> chooseColor = <span class="hljs-function">(<span class="hljs-params">color</span>) =&gt;</span> ({
+  <span class="hljs-keyword">type</span>: CHOOSE_COLOR,
+  payload: {
+    color,
+  },
+});
+
+<span class="hljs-keyword">const</span> changeUI = <span class="hljs-function">(<span class="hljs-params">color</span>) =&gt;</span> ({
+  <span class="hljs-keyword">type</span>: CHANGE_UI,
+  payload: {
+    color,
+  },
+});</code></pre>
+<p>We want to test the saga:</p>
+<pre><code class="javascript language-javascript"><span class="hljs-function"><span class="hljs-keyword">function</span>* <span class="hljs-title">changeColorSaga</span>(<span class="hljs-params"></span>) </span>{
+  <span class="hljs-keyword">const</span> action = <span class="hljs-keyword">yield</span> take(CHOOSE_COLOR);
+  <span class="hljs-keyword">yield</span> put(changeUI(action.payload.color));
+}</code></pre>
+<p>Since Sagas always yield an Effect, and these effects have basic factory functions (e.g. put, take etc.) a test may<br />
+inspect the yielded effect and compare it to an expected effect. To get the first yielded value from a saga,<br />
+call its <code>next().value</code>:</p>
+<pre><code class="javascript language-javascript">  <span class="hljs-keyword">const</span> gen = changeColorSaga();
+
+  assert.deepEqual(
+    gen.<span class="hljs-keyword">next</span>().value,
+    <span class="hljs-keyword">take</span>(CHOOSE_COLOR),
+    <span class="hljs-comment">'it should wait for a user to choose a color'</span>
+  );</code></pre>
+<p>A value must then be returned to assign to the <code>action</code> constant, which is used for the argument to the <code>put</code> effect:</p>
+<pre><code class="javascript language-javascript">  <span class="hljs-keyword">const</span> <span class="hljs-built_in">color</span> = <span class="hljs-string">'red'</span>;
+  <span class="hljs-keyword">assert</span>.deepEqual(
+    gen.next(chooseColor(<span class="hljs-built_in">color</span>)).value,
+    put(changeUI(<span class="hljs-built_in">color</span>)),
+    <span class="hljs-string">'it should dispatch an action to change the ui'</span>
+  );</code></pre>
+<p>Since there are no more <code>yield</code>s, then next time <code>next()</code> is called, the generator will be done:</p>
+<pre><code class="javascript language-javascript">  <span class="hljs-keyword">assert</span>.deepEqual(
+    gen.next().<span class="hljs-keyword">done</span>,
+    <span class="hljs-keyword">true</span>,
+    'it should be <span class="hljs-keyword">done</span>'
+  );</code></pre>
+<h3 id="branching-saga">Branching Saga</h3>
+<p>Sometimes your saga will have different outcomes. To test the different branches without repeating all the steps that lead to it you can use the utility function <strong>cloneableGenerator</strong></p>
+<p>This time we add two new actions, <code>CHOOSE_NUMBER</code> and <code>DO_STUFF</code>, with a related action creators:</p>
+<pre><code class="javascript language-javascript"><span class="hljs-keyword">const</span> CHOOSE_NUMBER = <span class="hljs-string">'CHOOSE_NUMBER'</span>;
+<span class="hljs-keyword">const</span> DO_STUFF = <span class="hljs-string">'DO_STUFF'</span>;
+
+<span class="hljs-keyword">const</span> chooseNumber = <span class="hljs-function">(<span class="hljs-params"><span class="hljs-built_in">number</span></span>) =&gt;</span> ({
+  <span class="hljs-keyword">type</span>: CHOOSE_NUMBER,
+  payload: {
+    <span class="hljs-built_in">number</span>,
+  },
+});
+
+<span class="hljs-keyword">const</span> doStuff = <span class="hljs-function"><span class="hljs-params">()</span> =&gt;</span> ({
+  <span class="hljs-keyword">type</span>: DO_STUFF,
+});</code></pre>
+<p>Now the saga under test will put two <code>DO_STUFF</code> actions before waiting for a <code>CHOOSE_NUMBER</code> action and then putting<br />
+either <code>changeUI('red')</code> or <code>changeUI('blue')</code>, depending on whether the number is even or odd.</p>
+<pre><code class="javascript language-javascript">function* doStuffThenChangeColor() {
+  <span class="hljs-function"><span class="hljs-keyword">yield</span> <span class="hljs-title">put</span>(<span class="hljs-params">doStuff(</span>))</span>;
+  <span class="hljs-function"><span class="hljs-keyword">yield</span> <span class="hljs-title">put</span>(<span class="hljs-params">doStuff(</span>))</span>;
+  <span class="hljs-keyword">const</span> action = <span class="hljs-function"><span class="hljs-keyword">yield</span> <span class="hljs-title">take</span>(<span class="hljs-params">CHOOSE_NUMBER</span>)</span>;
+  <span class="hljs-keyword">if</span> (action.payload.number % <span class="hljs-number">2</span> === <span class="hljs-number">0</span>) {
+    <span class="hljs-function"><span class="hljs-keyword">yield</span> <span class="hljs-title">put</span>(<span class="hljs-params">changeUI(<span class="hljs-string">'red'</span></span>))</span>;
+  } <span class="hljs-keyword">else</span> {
+    <span class="hljs-function"><span class="hljs-keyword">yield</span> <span class="hljs-title">put</span>(<span class="hljs-params">changeUI(<span class="hljs-string">'blue'</span></span>))</span>;
+  }
+}</code></pre>
+<p>The test is as follows:</p>
+<pre><code class="javascript language-javascript">import { put, take } from <span class="hljs-string">'redux-saga/effects'</span>;
+import { cloneableGenerator } from <span class="hljs-string">'@redux-saga/testing-utils'</span>;
+
+test(<span class="hljs-string">'doStuffThenChangeColor'</span>, assert =&gt; {
+  <span class="hljs-keyword">const</span> gen = cloneableGenerator(doStuffThenChangeColor)();
+  gen.next(); <span class="hljs-comment">// DO_STUFF</span>
+  gen.next(); <span class="hljs-comment">// DO_STUFF</span>
+  gen.next(); <span class="hljs-comment">// CHOOSE_NUMBER</span>
+
+  assert.test(<span class="hljs-string">'user choose an even number'</span>, a =&gt; {
+    <span class="hljs-comment">// cloning the generator before sending data</span>
+    <span class="hljs-keyword">const</span> <span class="hljs-keyword">clone</span> = gen.<span class="hljs-keyword">clone</span>();
+    a.deepEqual(
+      <span class="hljs-keyword">clone</span>.next(chooseNumber(<span class="hljs-number">2</span>)).value,
+      put(changeUI(<span class="hljs-string">'red'</span>)),
+      <span class="hljs-string">'should change the color to red'</span>
+    );
+
+    a.equal(
+      <span class="hljs-keyword">clone</span>.next().done,
+      <span class="hljs-keyword">true</span>,
+      <span class="hljs-string">'it should be done'</span>
+    );
+
+    a.end();
+  });
+
+  assert.test(<span class="hljs-string">'user choose an odd number'</span>, a =&gt; {
+    <span class="hljs-keyword">const</span> <span class="hljs-keyword">clone</span> = gen.<span class="hljs-keyword">clone</span>();
+    a.deepEqual(
+      <span class="hljs-keyword">clone</span>.next(chooseNumber(<span class="hljs-number">3</span>)).value,
+      put(changeUI(<span class="hljs-string">'blue'</span>)),
+      <span class="hljs-string">'should change the color to blue'</span>
+    );
+
+    a.equal(
+      <span class="hljs-keyword">clone</span>.next().done,
+      <span class="hljs-keyword">true</span>,
+      <span class="hljs-string">'it should be done'</span>
+    );
+
+    a.end();
+  });
+});</code></pre>
+<p>See also: <a href="TaskCancellation.md">Task cancellation</a> for testing fork effects</p>
+<h2 id="testing-the-full-saga">Testing the full Saga</h2>
+<p>Although it may be useful to test each step of a saga, in practise this makes for brittle tests. Instead, it may be<br />
+preferable to run the whole saga and assert that the expected effects have occurred.</p>
+<p>Suppose we have a basic saga which calls an HTTP API:</p>
+<pre><code class="javascript language-javascript">function* callApi(url) {
+  <span class="hljs-keyword">const</span> someValue = <span class="hljs-function"><span class="hljs-keyword">yield</span> <span class="hljs-title">select</span>(<span class="hljs-params">somethingFromState</span>)</span>;
+  <span class="hljs-keyword">try</span> {
+    <span class="hljs-keyword">const</span> result = <span class="hljs-function"><span class="hljs-keyword">yield</span> <span class="hljs-title">call</span>(<span class="hljs-params">myApi, url, someValue</span>)</span>;
+    <span class="hljs-function"><span class="hljs-keyword">yield</span> <span class="hljs-title">put</span>(<span class="hljs-params">success(result.json(</span>)))</span>;
+    <span class="hljs-keyword">return</span> result.status;
+  } <span class="hljs-keyword">catch</span> (e) {
+    <span class="hljs-function"><span class="hljs-keyword">yield</span> <span class="hljs-title">put</span>(<span class="hljs-params">error(e</span>))</span>;
+    <span class="hljs-keyword">return</span> <span class="hljs-number">-1</span>;
+  }
+}</code></pre>
+<p>We can run the saga with mocked values:</p>
+<pre><code class="javascript language-javascript">const dispatched = [];
+
+const saga = runSaga({
+  dispatch: <span class="hljs-function"><span class="hljs-params">(action)</span> =&gt;</span> dispatched.push(action),
+  getState: <span class="hljs-function"><span class="hljs-params">()</span> =&gt;</span> ({ value: <span class="hljs-string">'test'</span> }),
+}, callApi, <span class="hljs-string">'http://url'</span>);</code></pre>
+<p>A test could then be written to assert the dispatched actions and mock calls:</p>
+<pre><code class="javascript language-javascript"><span class="hljs-keyword">import</span> sinon <span class="hljs-keyword">from</span> <span class="hljs-string">'sinon'</span>;
+<span class="hljs-keyword">import</span> * as api <span class="hljs-keyword">from</span> <span class="hljs-string">'./api'</span>;
+
+test(<span class="hljs-string">'callApi'</span>, async (<span class="hljs-built_in">assert</span>) =&gt; {
+  const dispatched = [];
+  sinon.stub(api, <span class="hljs-string">'myApi'</span>).callsFake(<span class="hljs-function"><span class="hljs-params">()</span> =&gt;</span> ({
+    <span class="hljs-name">json</span>: <span class="hljs-function"><span class="hljs-params">()</span> =&gt;</span> ({
+      <span class="hljs-name">some</span>: <span class="hljs-string">'value'</span>
+    })
+  }));
+  const url = <span class="hljs-string">'http://url'</span>;
+  const result = await runSaga({
+    <span class="hljs-name">dispatch</span>: <span class="hljs-function"><span class="hljs-params">(action)</span> =&gt;</span> dispatched.push(action),
+    <span class="hljs-name">getState</span>: <span class="hljs-function"><span class="hljs-params">()</span> =&gt;</span> ({ <span class="hljs-name">state</span>: <span class="hljs-string">'test'</span> }),
+  }, callApi, url).toPromise();
+
+  <span class="hljs-built_in">assert</span>.<span class="hljs-literal">true</span>(myApi.calledWith(url, somethingFromState({ <span class="hljs-name">state</span>: <span class="hljs-string">'test'</span> })));
+  <span class="hljs-built_in">assert</span>.deepEqual(dispatched, [success({ <span class="hljs-name">some</span>: <span class="hljs-string">'value'</span> })]);
+});</code></pre>
+<p>See also: Repository Examples:</p>
+<p><a href="https://github.com/redux-saga/redux-saga/blob/master/examples/counter/test/sagas.js">https://github.com/redux-saga/redux-saga/blob/master/examples/counter/test/sagas.js</a></p>
+<p><a href="https://github.com/redux-saga/redux-saga/blob/master/examples/shopping-cart/test/sagas.js">https://github.com/redux-saga/redux-saga/blob/master/examples/shopping-cart/test/sagas.js</a></p>
+<h2 id="testing-libraries">Testing libraries</h2>
+<p>While both of the above testing methods can be written natively, there exist several libraries to make both methods easier. Additionally, some libraries can be used to test sagas in a <em>third</em> way: recording specific side-effects (but not all).</p>
+<p>Sam Hogarth's (@sh1989) <a href="http://blog.scottlogic.com/2018/01/16/evaluating-redux-saga-test-libraries.html">article</a> summarizes the different options well.</p>
+<p>For testing each generator yield step-by-step there is <a href="https://github.com/stoeffel/redux-saga-test"><code>redux-saga-test</code></a> and <a href="https://github.com/antoinejaussoin/redux-saga-testing/"><code>redux-saga-testing</code></a>. <a href="https://github.com/DNAinfo/redux-saga-test-engine"><code>redux-saga-test-engine</code></a> is for recording and testing for specific side effects. For an integration test, <a href="https://github.com/wix/redux-saga-tester"><code>redux-saga-tester</code></a>. And <a href="https://github.com/jfairbank/redux-saga-test-plan"><code>redux-saga-test-plan</code></a> can actually cover all three bases.</p>
+<h3 id="redux-saga-test-and-redux-saga-testing-for-step-by-step-testing"><code>redux-saga-test</code> and <code>redux-saga-testing</code> for step-by-step testing</h3>
+<p>The <code>redux-saga-test</code> library provides syntactic sugar for your step-by-step tests. The <code>fromGenerator</code> function returns a value that can be iterated manually with <code>.next()</code> and have an assertion made using the relevant saga effect method.</p>
+<pre><code class="javascript language-javascript"><span class="hljs-keyword">import</span> fromGenerator from <span class="hljs-string">'redux-saga-test'</span>;
+
+test(<span class="hljs-string">'with redux-saga-test'</span>, () =&gt; {
+  <span class="hljs-keyword">const</span> generator = callApi(<span class="hljs-string">'url'</span>);
+  <span class="hljs-comment">/*
+  * The assertions passed to fromGenerator
+  * requires a `deepEqual` method
+  */</span>
+  <span class="hljs-keyword">const</span> <span class="hljs-keyword">expect</span> = fromGenerator(assertions, generator);
+
+  <span class="hljs-keyword">expect</span>.next().select(somethingFromState);
+  <span class="hljs-keyword">expect</span>.next(selectedData).call(myApi, <span class="hljs-string">'url'</span>, selectedData);
+  <span class="hljs-keyword">expect</span>.next(result).put(success(result.json));
+});</code></pre>
+<p><code>redux-saga-testing</code> library provides a method <code>sagaHelper</code> that takes your generator and returns a value that works a lot like Jest's <code>it()</code> function, but also advances the generator being tested. The <code>result</code> parameter passed into the callback is the value yielded by the generater</p>
+<pre><code class="javascript language-javascript"><span class="hljs-keyword">import</span> sagaHelper <span class="hljs-keyword">from</span> <span class="hljs-string">'redux-saga-testing'</span>;
+
+test(<span class="hljs-string">'with redux-saga-testing'</span>, () =&gt; {
+  const it = sagaHelper(callApi());
+
+  it(<span class="hljs-string">'should select from state'</span>, selectResult =&gt; {
+    // <span class="hljs-keyword">with</span> Jest<span class="hljs-string">'s `expect`
+    expect(selectResult).toBe(value);
+  });
+
+  it('</span>should <span class="hljs-keyword">select</span> <span class="hljs-keyword">from</span> stat<span class="hljs-string">e', apiResponse =&gt; {
+    // without tape'</span>s `test`
+    <span class="hljs-keyword">assert</span>.deepEqual(apiResponse.json(), jsonResponse);
+  });
+
+  // an empty <span class="hljs-keyword">call</span> <span class="hljs-keyword">to</span> `it` can be used <span class="hljs-keyword">to</span> skip an effect
+  it(<span class="hljs-string">''</span>, () =&gt; {});
+});</code></pre>
+<h3 id="redux-saga-test-plan"><code>redux-saga-test-plan</code></h3>
+<p>This is the most versatile library. The <code>testSaga</code> API is used for exact order testing and <code>expectSaga</code> is for both recording side-effects and integration testing.</p>
+<pre><code class="javascript language-javascript">import { expectSaga, testSaga } <span class="hljs-meta">from</span> <span class="hljs-string">'redux-saga-test-plan'</span>;
+
+test(<span class="hljs-string">'exact order with redux-saga-test-plan'</span>, () =&gt; {
+  <span class="hljs-meta">return</span> testSaga(callApi, <span class="hljs-string">'url'</span>)
+    .next()
+    .<span class="hljs-meta">select</span>(selectFromState)
+    .next()
+    .<span class="hljs-meta">call</span>(myApi, <span class="hljs-string">'url'</span>, valueFromSelect);
+
+    ...
+});
+
+test(<span class="hljs-string">'recorded effects with redux-saga-test-plan'</span>, () =&gt; {
+  <span class="hljs-comment">/*
+  * With expectSaga, you can assert that any yield from
+  * your saga occurs as expected, *regardless of order*.
+  * You must call .run() at the end.
+  */</span>
+  <span class="hljs-meta">return</span> expectSaga(callApi, <span class="hljs-string">'url'</span>)
+    <span class="hljs-meta">.put(</span>success(value)) // last effect <span class="hljs-meta">from</span> our saga, first one tested
+
+    .<span class="hljs-meta">call</span>(myApi, <span class="hljs-string">'url'</span>, value)
+    .r<span class="hljs-meta">un(</span>);
+    <span class="hljs-comment">/* notice no assertion for the select call */</span>
+});
+
+test(<span class="hljs-string">'test only final effect with .provide()'</span>, () =&gt; {
+  <span class="hljs-comment">/*
+  * With the .provide() method from expectSaga
+  * you can by pass in all expected values
+  * and test only your saga's final effect.
+  */</span>
+  <span class="hljs-meta">return</span> expectSaga(callApi, <span class="hljs-string">'url'</span>)
+    .provide([
+      [<span class="hljs-meta">select</span>(selectFromState), selectedValue],
+      [<span class="hljs-meta">call</span>(myApi, <span class="hljs-string">'url'</span>, selectedValue), response]
+    ])
+    <span class="hljs-meta">.put(</span>success(response))
+    .r<span class="hljs-meta">un(</span>);
+});
+
+test(<span class="hljs-string">'integration test with withReducer'</span>, () =&gt; {
+  <span class="hljs-comment">/*
+  * Using `withReducer` allows you to test
+  * the state shape upon completion of your reducer -
+  * a true integration test for your Redux store management.
+  */</span>
+
+  <span class="hljs-meta">return</span> expectSaga(callApi, <span class="hljs-string">'url'</span>)
+    .withReducer(myReducer)
+    .provide([
+      [<span class="hljs-meta">call</span>(myApi, <span class="hljs-string">'url'</span>, value), response]
+    ])
+    .hasFinalState({
+      data: response
+    })
+    .r<span class="hljs-meta">un(</span>);
+});</code></pre>
+<h3 id="redux-saga-test-engine">redux-saga-test-engine</h3>
+<p>This library functions very similarly in setup to <code>redux-saga-test-plan</code>, but is best used to record effects. Provide a collection of saga generic effects to be watched by <code>createSagaTestEngine</code> function which in turn returns a function. Then provide your saga and specific effects and their arguments.</p>
+<pre><code class="javascript language-javascript">const collectedEffects  = createSagaTestEngine(['SELECT', 'CALL', 'PUT'])<span class="hljs-comment">;</span>
+const actualEffects = collectEffects(<span class="hljs-name">mySaga</span>, [ [myEffect(<span class="hljs-name">arg</span>), value], ... ], argsToMySaga)<span class="hljs-comment">;</span></code></pre>
+<p>The value of <code>actualEffects</code> is an array containing elements equal to the yielded values from all <em>collected</em> effects, in order of occurence.</p>
+<pre><code class="javascript language-javascript"><span class="hljs-keyword">import</span> createSagaTestEngine from <span class="hljs-string">'redux-saga-test-engine'</span>;
+
+test(<span class="hljs-string">'testing with redux-saga-test-engine'</span>, () =&gt; {
+  <span class="hljs-keyword">const</span> collectEffects = createSagaTestEngine([<span class="hljs-string">'CALL'</span>, <span class="hljs-string">'PUT'</span>]);
+
+  <span class="hljs-keyword">const</span> actualEffects = collectEffects(
+    callApi,
+    [
+      [select(selectFromState), selectedValue],
+      [call(myApi, <span class="hljs-string">'url'</span>, selectedValue), response]
+    ],
+    <span class="hljs-comment">// Any further args are passed to the saga</span>
+    <span class="hljs-comment">// Here it is our URL, but typically would be the dispatched action</span>
+    <span class="hljs-string">'url'</span>
+  );
+
+  <span class="hljs-comment">// assert that the effects you care about occurred as expected, in order</span>
+  <span class="hljs-keyword">assert</span>.equal(actualEffects[<span class="hljs-number">0</span>], call(myApi, <span class="hljs-string">'url'</span>, selectedValue));
+  <span class="hljs-keyword">assert</span>.equal(actualEffects[<span class="hljs-number">1</span>], put(success, response));
+
+  <span class="hljs-comment">// assert that your saga does nothing unexpected</span>
+  <span class="hljs-keyword">assert</span>.<span class="hljs-keyword">true</span>(actualEffects.length === <span class="hljs-number">2</span>);
+});</code></pre>
+<h3 id="redux-saga-tester">redux-saga-tester</h3>
+<p>A final library to consider for integration testing. this library provides a <code>sagaTester</code> class, to which you instantiate with your store's initial state and your reducer.</p>
+<p>To test your saga, the <code>sagaTester</code> instance <code>start()</code> method with your saga and its argument(s). This runs your saga to its end. Then you may assert that effects occured, actions were dispatched and the state was updated as expected.</p>
+<pre><code class="javascript language-javascript"><span class="hljs-keyword">import</span> SagaTester <span class="hljs-keyword">from</span> <span class="hljs-string">'redux-saga-tester'</span>;
+
+test(<span class="hljs-string">'with redux-saga-tester'</span>, <span class="hljs-function"><span class="hljs-params">()</span> =&gt;</span> {
+  const sagaTester = <span class="hljs-keyword">new</span> SagaTester({
+    initialState: defaultState,
+    reducers: reducer
+  });
+
+  sagaTester.start(callApi);
+
+  sagaTester.dispatch(actionToTriggerSaga());
+
+  <span class="hljs-keyword">await</span> sagaTester.waitFor(success);
+
+  assert.<span class="hljs-literal">true</span>(sagaTester.wasCalled(success(response)));
+
+  assert.deepEqual(sagaTester.getState(), { data: response });
+});</code></pre>
+<h2 id="effectmiddlwares"><code>effectMiddlwares</code></h2>
+<p>Provides a native way to perform integration like testing without one of the above libraries.</p>
+<p>The idea is that you can create a real redux store with saga middleware in your test file. The saga middlware takes an object as an argument. That object would have an <code>effectMiddlewares</code> value: a function where you can intercept/hijack any effect and resolve it on your own - passing it very redux-style to the next middleware.</p>
+<p>In your test, you would start a saga, intercept/resolve async effects with effectMiddlewares and assert on things like state updates to test integration between your saga and a store.</p>
+<p>Here's an example from the <a href="https://github.com/redux-saga/redux-saga/blob/34c9093684323ab92eacdf2df958f31d9873d3b1/test/interpreter/effectMiddlewares.js#L88">docs</a>:</p>
+<pre><code class="javascript language-javascript">test('effectMiddleware', assert =&gt; {
+  assert.plan(<span class="hljs-number">1</span>)<span class="hljs-comment">;</span>
+
+  let actual = []<span class="hljs-comment">;</span>
+
+  function rootReducer(<span class="hljs-name">state</span> = {}, action) {
+    return action<span class="hljs-comment">;</span>
+  }
+
+  const effectMiddleware = next =&gt; effect =&gt; {
+    if (<span class="hljs-name">effect</span> === apiCall) {
+      Promise.resolve().then(() =&gt; next('injected value'))<span class="hljs-comment">;</span>
+      return<span class="hljs-comment">;</span>
+    }
+    return next(<span class="hljs-name">effect</span>)<span class="hljs-comment">;</span>
+  }<span class="hljs-comment">;</span>
+
+  const middleware = sagaMiddleware({ effectMiddlewares: [effectMiddleware] })<span class="hljs-comment">;</span>
+  const store = createStore(<span class="hljs-name">rootReducer</span>, {}, applyMiddleware(<span class="hljs-name">middleware</span>))<span class="hljs-comment">;</span>
+
+  const apiCall = call(() =&gt; new Promise(() =&gt; {}))<span class="hljs-comment">;</span>
+
+  function* root() {
+    actual.push(<span class="hljs-name">yield</span> all([call(<span class="hljs-name">fnA</span>), apiCall]))<span class="hljs-comment">;</span>
+  }
+
+  function* fnA() {
+    const result = []<span class="hljs-comment">;</span>
+    result.push((<span class="hljs-name">yield</span> take('ACTION-1')).val)<span class="hljs-comment">;</span>
+    result.push((<span class="hljs-name">yield</span> take('ACTION-2')).val)<span class="hljs-comment">;</span>
+    return result<span class="hljs-comment">;</span>
+  }
+
+  const task = middleware.run(<span class="hljs-name">root</span>)
+
+  Promise.resolve()
+    .then(() =&gt; store.dispatch({ type: 'ACTION-1', val: <span class="hljs-number">1</span> }))
+    .then(() =&gt; store.dispatch({ type: 'ACTION-2', val: <span class="hljs-number">2</span> }))<span class="hljs-comment">;</span>
+
+  const expected = [[[<span class="hljs-number">1</span>, <span class="hljs-number">2</span>], 'injected value']]<span class="hljs-comment">;</span>
+
+  task
+    .toPromise()
+    .then(() =&gt; {
+      assert.deepEqual(
+        <span class="hljs-name">actual</span>,
+        expected,
+        'effectMiddleware must be able to intercept and resolve effect in a custom way',
+      )
+    })
+    .catch(<span class="hljs-name">err</span> =&gt; assert.fail(<span class="hljs-name">err</span>))<span class="hljs-comment">;</span>
+})<span class="hljs-comment">;</span></code></pre>
+	</div>
+</body>
+</html>

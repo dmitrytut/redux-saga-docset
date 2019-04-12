@@ -1,0 +1,187 @@
+
+<!DOCTYPE HTML>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+		<meta name=viewport content='width=device-width,user-scalable=no,minimum-scale=1.0,maximum-scale=1.0' />
+		<link media="all" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/github-markdown-css/2.9.0/github-markdown.min.css" type="text/css" />
+		<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/github.min.css" type="text/css" media="all" />
+    <title></title>
+</head>
+<body>
+	<div class="markdown-body">
+		<h1 id="recipes">Recipes</h1>
+<h2 id="throttling">Throttling</h2>
+<p>You can throttle a sequence of dispatched actions by using a handy built-in <code>throttle</code> helper. For example, suppose the UI fires an <code>INPUT_CHANGED</code> action while the user is typing in a text field.</p>
+<pre><code class="javascript language-javascript"><span class="hljs-keyword">import</span> { throttle } <span class="hljs-keyword">from</span> <span class="hljs-string">'redux-saga/effects'</span>
+
+<span class="hljs-function"><span class="hljs-keyword">function</span>* <span class="hljs-title">handleInput</span>(<span class="hljs-params">input</span>) </span>{
+  <span class="hljs-comment">// ...</span>
+}
+
+<span class="hljs-function"><span class="hljs-keyword">function</span>* <span class="hljs-title">watchInput</span>(<span class="hljs-params"></span>) </span>{
+  <span class="hljs-keyword">yield</span> throttle(<span class="hljs-number">500</span>, <span class="hljs-string">'INPUT_CHANGED'</span>, handleInput)
+}</code></pre>
+<p>By using this helper the <code>watchInput</code> won't start a new <code>handleInput</code> task for 500ms, but in the same time it will still be accepting the latest <code>INPUT_CHANGED</code> actions into its underlaying <code>buffer</code>, so it'll miss all <code>INPUT_CHANGED</code> actions happening in-between. This ensures that the Saga will take at most one <code>INPUT_CHANGED</code> action during each period of 500ms and still be able to process trailing action.</p>
+<h2 id="debouncing">Debouncing</h2>
+<p>From redux-saga@v1 <a href="../api/README.md#debouncems-pattern-saga-args">debounce</a> is built-in effect.</p>
+<p>Let's consider how the effect could be implemented as a combination of other base effects.</p>
+<p>To debounce a sequence, put the built-in <code>delay</code> helper in the forked task:</p>
+<pre><code class="javascript language-javascript"><span class="hljs-keyword">import</span> { call, cancel, fork, take, delay } <span class="hljs-keyword">from</span> <span class="hljs-string">'redux-saga/effects'</span>
+
+<span class="hljs-function"><span class="hljs-keyword">function</span>* <span class="hljs-title">handleInput</span>(<span class="hljs-params">input</span>) </span>{
+  <span class="hljs-comment">// debounce by 500ms</span>
+  <span class="hljs-keyword">yield</span> delay(<span class="hljs-number">500</span>)
+  ...
+}
+
+<span class="hljs-function"><span class="hljs-keyword">function</span>* <span class="hljs-title">watchInput</span>(<span class="hljs-params"></span>) </span>{
+  <span class="hljs-keyword">let</span> task
+  <span class="hljs-keyword">while</span> (<span class="hljs-literal">true</span>) {
+    <span class="hljs-keyword">const</span> { input } = <span class="hljs-keyword">yield</span> take(<span class="hljs-string">'INPUT_CHANGED'</span>)
+    <span class="hljs-keyword">if</span> (task) {
+      <span class="hljs-keyword">yield</span> cancel(task)
+    }
+    task = <span class="hljs-keyword">yield</span> fork(handleInput, input)
+  }
+}</code></pre>
+<p>In the above example <code>handleInput</code> waits for 500ms before performing its logic. If the user types something during this period we'll get more <code>INPUT_CHANGED</code> actions. Since <code>handleInput</code> will still be blocked in the <code>delay</code> call, it'll be cancelled by <code>watchInput</code> before it can start performing its logic.</p>
+<p>Example above could be rewritten with redux-saga <code>takeLatest</code> helper:</p>
+<pre><code class="javascript language-javascript"><span class="hljs-keyword">import</span> { call, takeLatest, delay } <span class="hljs-keyword">from</span> <span class="hljs-string">'redux-saga/effects'</span>
+
+<span class="hljs-function"><span class="hljs-keyword">function</span>* <span class="hljs-title">handleInput</span>(<span class="hljs-params">{ input }</span>) </span>{
+  <span class="hljs-comment">// debounce by 500ms</span>
+  <span class="hljs-keyword">yield</span> delay(<span class="hljs-number">500</span>)
+  ...
+}
+
+<span class="hljs-function"><span class="hljs-keyword">function</span>* <span class="hljs-title">watchInput</span>(<span class="hljs-params"></span>) </span>{
+  <span class="hljs-comment">// will cancel current running handleInput task</span>
+  <span class="hljs-keyword">yield</span> takeLatest(<span class="hljs-string">'INPUT_CHANGED'</span>, handleInput);
+}</code></pre>
+<h2 id="retrying-xhr-calls">Retrying XHR calls</h2>
+<p>From redux-saga@v1 <a href="../api/README.md#retrymaxtries-delay-fn-args">retry</a> is built-in effect.</p>
+<p>Let's consider how the effect could be implemented as a combination of other base effects.</p>
+<p>To retry an XHR call for a specific amount of times, use a for loop with a delay:</p>
+<pre><code class="javascript language-javascript"><span class="hljs-keyword">import</span> { call, put, take, delay } <span class="hljs-keyword">from</span> <span class="hljs-string">'redux-saga/effects'</span>
+
+<span class="hljs-function"><span class="hljs-keyword">function</span>* <span class="hljs-title">updateApi</span>(<span class="hljs-params">data</span>) </span>{
+  <span class="hljs-keyword">for</span>(<span class="hljs-keyword">let</span> i = <span class="hljs-number">0</span>; i &lt; <span class="hljs-number">5</span>; i++) {
+    <span class="hljs-keyword">try</span> {
+      <span class="hljs-keyword">const</span> apiResponse = <span class="hljs-keyword">yield</span> call(apiRequest, { data });
+      <span class="hljs-keyword">return</span> apiResponse;
+    } <span class="hljs-keyword">catch</span>(err) {
+      <span class="hljs-keyword">if</span>(i &lt; <span class="hljs-number">4</span>) {
+        <span class="hljs-keyword">yield</span> delay(<span class="hljs-number">2000</span>);
+      }
+    }
+  }
+  <span class="hljs-comment">// attempts failed after 5 attempts</span>
+  <span class="hljs-keyword">throw</span> <span class="hljs-keyword">new</span> <span class="hljs-built_in">Error</span>(<span class="hljs-string">'API request failed'</span>);
+}
+
+<span class="hljs-keyword">export</span> <span class="hljs-keyword">default</span> <span class="hljs-function"><span class="hljs-keyword">function</span>* <span class="hljs-title">updateResource</span>(<span class="hljs-params"></span>) </span>{
+  <span class="hljs-keyword">while</span> (<span class="hljs-literal">true</span>) {
+    <span class="hljs-keyword">const</span> { data } = <span class="hljs-keyword">yield</span> take(<span class="hljs-string">'UPDATE_START'</span>);
+    <span class="hljs-keyword">try</span> {
+      <span class="hljs-keyword">const</span> apiResponse = <span class="hljs-keyword">yield</span> call(updateApi, data);
+      <span class="hljs-keyword">yield</span> put({
+        <span class="hljs-attr">type</span>: <span class="hljs-string">'UPDATE_SUCCESS'</span>,
+        <span class="hljs-attr">payload</span>: apiResponse.body,
+      });
+    } <span class="hljs-keyword">catch</span> (error) {
+      <span class="hljs-keyword">yield</span> put({
+        <span class="hljs-attr">type</span>: <span class="hljs-string">'UPDATE_ERROR'</span>,
+        error
+      });
+    }
+  }
+}</code></pre>
+<p>In the above example the <code>apiRequest</code> will be retried for 5 times, with a delay of 2 seconds in between. After the 5th failure, the exception thrown will get caught by the parent saga, which will dispatch the <code>UPDATE_ERROR</code> action.</p>
+<p>If you want unlimited retries, then the <code>for</code> loop can be replaced with a <code>while (true)</code>. Also instead of <code>take</code> you can use <code>takeLatest</code>, so only the last request will be retried. By adding an <code>UPDATE_RETRY</code> action in the error handling, we can inform the user that the update was not successful but it will be retried.</p>
+<pre><code class="javascript language-javascript"><span class="hljs-keyword">import</span> { delay } <span class="hljs-keyword">from</span> <span class="hljs-string">'redux-saga/effects'</span>
+
+<span class="hljs-function"><span class="hljs-keyword">function</span>* <span class="hljs-title">updateApi</span>(<span class="hljs-params">data</span>) </span>{
+  <span class="hljs-keyword">while</span> (<span class="hljs-literal">true</span>) {
+    <span class="hljs-keyword">try</span> {
+      <span class="hljs-keyword">const</span> apiResponse = <span class="hljs-keyword">yield</span> call(apiRequest, { data });
+      <span class="hljs-keyword">return</span> apiResponse;
+    } <span class="hljs-keyword">catch</span>(error) {
+      <span class="hljs-keyword">yield</span> put({
+        <span class="hljs-attr">type</span>: <span class="hljs-string">'UPDATE_RETRY'</span>,
+        error
+      })
+      <span class="hljs-keyword">yield</span> delay(<span class="hljs-number">2000</span>);
+    }
+  }
+}
+
+<span class="hljs-function"><span class="hljs-keyword">function</span>* <span class="hljs-title">updateResource</span>(<span class="hljs-params">{ data }</span>) </span>{
+  <span class="hljs-keyword">const</span> apiResponse = <span class="hljs-keyword">yield</span> call(updateApi, data);
+  <span class="hljs-keyword">yield</span> put({
+    <span class="hljs-attr">type</span>: <span class="hljs-string">'UPDATE_SUCCESS'</span>,
+    <span class="hljs-attr">payload</span>: apiResponse.body,
+  });
+}
+
+<span class="hljs-keyword">export</span> <span class="hljs-function"><span class="hljs-keyword">function</span>* <span class="hljs-title">watchUpdateResource</span>(<span class="hljs-params"></span>) </span>{
+  <span class="hljs-keyword">yield</span> takeLatest(<span class="hljs-string">'UPDATE_START'</span>, updateResource);
+}</code></pre>
+<h2 id="undo">Undo</h2>
+<p>The ability to undo respects the user by allowing the action to happen smoothly<br />
+first and foremost before assuming they don't know what they are doing. <a href="https://goodui.org/#8">GoodUI</a><br />
+The <a href="http://redux.js.org/docs/recipes/ImplementingUndoHistory.html">redux documentation</a> describes a<br />
+robust way to implement an undo based on modifying the reducer to contain <code>past</code>, <code>present</code>,<br />
+and <code>future</code> state.  There is even a library <a href="https://github.com/omnidan/redux-undo">redux-undo</a> that<br />
+creates a higher order reducer to do most of the heavy lifting for the developer.</p>
+<p>However, this method comes with overhead because it stores references to the previous state(s) of the application.</p>
+<p>Using redux-saga's <code>delay</code> and <code>race</code> we can implement a basic, one-time undo without enhancing<br />
+our reducer or storing the previous state.</p>
+<pre><code class="javascript language-javascript"><span class="hljs-keyword">import</span> { take, put, call, spawn, race, delay } <span class="hljs-keyword">from</span> <span class="hljs-string">'redux-saga/effects'</span>
+<span class="hljs-keyword">import</span> { updateThreadApi, actions } <span class="hljs-keyword">from</span> <span class="hljs-string">'somewhere'</span>
+
+<span class="hljs-function"><span class="hljs-keyword">function</span>* <span class="hljs-title">onArchive</span>(<span class="hljs-params">action</span>) </span>{
+
+  <span class="hljs-keyword">const</span> { threadId } = action
+  <span class="hljs-keyword">const</span> undoId = <span class="hljs-string">`UNDO_ARCHIVE_<span class="hljs-subst">${threadId}</span>`</span>
+
+  <span class="hljs-keyword">const</span> thread = { <span class="hljs-attr">id</span>: threadId, <span class="hljs-attr">archived</span>: <span class="hljs-literal">true</span> }
+
+  <span class="hljs-comment">// show undo UI element, and provide a key to communicate</span>
+  <span class="hljs-keyword">yield</span> put(actions.showUndo(undoId))
+
+  <span class="hljs-comment">// optimistically mark the thread as `archived`</span>
+  <span class="hljs-keyword">yield</span> put(actions.updateThread(thread))
+
+  <span class="hljs-comment">// allow the user 5 seconds to perform undo.</span>
+  <span class="hljs-comment">// after 5 seconds, 'archive' will be the winner of the race-condition</span>
+  <span class="hljs-keyword">const</span> { undo, archive } = <span class="hljs-keyword">yield</span> race({
+    <span class="hljs-attr">undo</span>: take(<span class="hljs-function"><span class="hljs-params">action</span> =&gt;</span> action.type === <span class="hljs-string">'UNDO'</span> &amp;&amp; action.undoId === undoId),
+    <span class="hljs-attr">archive</span>: delay(<span class="hljs-number">5000</span>)
+  })
+
+  <span class="hljs-comment">// hide undo UI element, the race condition has an answer</span>
+  <span class="hljs-keyword">yield</span> put(actions.hideUndo(undoId))
+
+  <span class="hljs-keyword">if</span> (undo) {
+    <span class="hljs-comment">// revert thread to previous state</span>
+    <span class="hljs-keyword">yield</span> put(actions.updateThread({ <span class="hljs-attr">id</span>: threadId, <span class="hljs-attr">archived</span>: <span class="hljs-literal">false</span> }))
+  } <span class="hljs-keyword">else</span> <span class="hljs-keyword">if</span> (archive) {
+    <span class="hljs-comment">// make the API call to apply the changes remotely</span>
+    <span class="hljs-keyword">yield</span> call(updateThreadApi, thread)
+  }
+}
+
+<span class="hljs-function"><span class="hljs-keyword">function</span>* <span class="hljs-title">main</span>(<span class="hljs-params"></span>) </span>{
+  <span class="hljs-keyword">while</span> (<span class="hljs-literal">true</span>) {
+    <span class="hljs-comment">// wait for an ARCHIVE_THREAD to happen</span>
+    <span class="hljs-keyword">const</span> action = <span class="hljs-keyword">yield</span> take(<span class="hljs-string">'ARCHIVE_THREAD'</span>)
+    <span class="hljs-comment">// use spawn to execute onArchive in a non-blocking fashion, which also</span>
+    <span class="hljs-comment">// prevents cancellation when main saga gets cancelled.</span>
+    <span class="hljs-comment">// This helps us in keeping state in sync between server and client</span>
+    <span class="hljs-keyword">yield</span> spawn(onArchive, action)
+  }
+}</code></pre>
+	</div>
+</body>
+</html>

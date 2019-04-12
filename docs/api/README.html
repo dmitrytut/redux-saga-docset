@@ -1,0 +1,1171 @@
+
+<!DOCTYPE HTML>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+		<meta name=viewport content='width=device-width,user-scalable=no,minimum-scale=1.0,maximum-scale=1.0' />
+		<link media="all" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/github-markdown-css/2.9.0/github-markdown.min.css" type="text/css" />
+		<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/github.min.css" type="text/css" media="all" />
+    <title></title>
+</head>
+<body>
+	<div class="markdown-body">
+		<h1 id="api-reference">API Reference</h1>
+<ul>
+<li><a href="#middleware-api"><code>Middleware API</code></a><ul>
+<li><a href="#createsagamiddlewareoptions"><code>createSagaMiddleware(options)</code></a></li>
+<li><a href="#middlewarerunsaga-args"><code>middleware.run(saga, ...args)</code></a></li></ul></li>
+<li><a href="#effect-creators"><code>Effect creators</code></a><ul>
+<li><a href="#takepattern"><code>take(pattern)</code></a></li>
+<li><a href="#takemaybepattern"><code>takeMaybe(pattern)</code></a></li>
+<li><a href="#takechannel"><code>take(channel)</code></a></li>
+<li><a href="#takemaybechannel"><code>takeMaybe(channel)</code></a></li>
+<li><a href="#takeeverypattern-saga-args"><code>takeEvery(pattern, saga, ...args)</code></a></li>
+<li><a href="#takeeverychannel-saga-args"><code>takeEvery(channel, saga, ...args)</code></a></li>
+<li><a href="#takelatestpattern-saga-args"><code>takeLatest(pattern, saga, ..args)</code></a></li>
+<li><a href="#takelatestchannel-saga-args"><code>takeLatest(channel, saga, ..args)</code></a></li>
+<li><a href="#takeleadingpattern-saga-args"><code>takeLeading(pattern, saga, ..args)</code></a></li>
+<li><a href="#takeleadingchannel-saga-args"><code>takeLeading(channel, saga, ..args)</code></a></li>
+<li><a href="#putaction"><code>put(action)</code></a></li>
+<li><a href="#putresolveaction"><code>putResolve(action)</code></a></li>
+<li><a href="#putchannel-action"><code>put(channel, action)</code></a></li>
+<li><a href="#callfn-args"><code>call(fn, ...args)</code></a></li>
+<li><a href="#callcontext-fn-args"><code>call([context, fn], ...args)</code></a></li>
+<li><a href="#callcontext-fnname-args"><code>call([context, fnName], ...args)</code></a></li>
+<li><a href="#callcontext-fn-args-1"><code>call({context, fn}, ...args)</code></a></li>
+<li><a href="#applycontext-fn-args"><code>apply(context, fn, args)</code></a></li>
+<li><a href="#cpsfn-args"><code>cps(fn, ...args)</code></a></li>
+<li><a href="#cpscontext-fn-args"><code>cps([context, fn], ...args)</code></a></li>
+<li><a href="#cpscontext-fn-args-1"><code>cps({context, fn}, ...args)</code></a></li>
+<li><a href="#forkfn-args"><code>fork(fn, ...args)</code></a></li>
+<li><a href="#forkcontext-fn-args"><code>fork([context, fn], ...args)</code></a></li>
+<li><a href="#forkcontext-fn-args-1"><code>fork({context, fn}, ...args)</code></a></li>
+<li><a href="#spawnfn-args"><code>spawn(fn, ...args)</code></a></li>
+<li><a href="#spawncontext-fn-args"><code>spawn([context, fn], ...args)</code></a></li>
+<li><a href="#jointask"><code>join(task)</code></a></li>
+<li><a href="#jointasks"><code>join([...tasks])</code></a></li>
+<li><a href="#canceltask"><code>cancel(task)</code></a></li>
+<li><a href="#canceltasks"><code>cancel([...tasks])</code></a></li>
+<li><a href="#cancel"><code>cancel()</code></a></li>
+<li><a href="#selectselector-args"><code>select(selector, ...args)</code></a></li>
+<li><a href="#actionchannelpattern-buffer"><code>actionChannel(pattern, [buffer])</code></a></li>
+<li><a href="#flushchannel"><code>flush(channel)</code></a></li>
+<li><a href="#cancelled"><code>cancelled()</code></a></li>
+<li><a href="#setcontextprops"><code>setContext(props)</code></a></li>
+<li><a href="#getcontextprop"><code>getContext(prop)</code></a></li>
+<li><a href="#delayms-val"><code>delay(ms, [val])</code></a></li>
+<li><a href="#throttlems-pattern-saga-args"><code>throttle(ms, pattern, saga, ..args)</code></a></li>
+<li><a href="#throttlems-channel-saga-args"><code>throttle(ms, channel, saga, ..args)</code></a></li>
+<li><a href="#debouncems-pattern-saga-args"><code>debounce(ms, pattern, saga, ..args)</code></a></li>
+<li><a href="#debouncems-channel-saga-args"><code>debounce(ms, channel, saga, ..args)</code></a></li>
+<li><a href="#retrymaxtries-delay-fn-args"><code>retry(maxTries, delay, fn, ...args)</code></a></li></ul></li>
+<li><a href="#effect-combinators"><code>Effect combinators</code></a><ul>
+<li><a href="#raceeffects"><code>race(effects)</code></a></li>
+<li><a href="#raceeffects-with-array"><code>race([...effects])</code></a></li>
+<li><a href="#alleffects---parallel-effects"><code>all([...effects]) (aka parallel effects)</code></a></li>
+<li><a href="#alleffects"><code>all(effects)</code></a></li></ul></li>
+<li><a href="#interfaces"><code>Interfaces</code></a><ul>
+<li><a href="#task"><code>Task</code></a></li>
+<li><a href="#channel"><code>Channel</code></a></li>
+<li><a href="#buffer"><code>Buffer</code></a></li>
+<li><a href="#sagamonitor"><code>SagaMonitor</code></a></li></ul></li>
+<li><a href="#external-api"><code>External API</code></a><ul>
+<li><a href="#runsagaoptions-saga-args"><code>runSaga(options, saga, ...args)</code></a></li></ul></li>
+<li><a href="#utils"><code>Utils</code></a><ul>
+<li><a href="#channelbuffer"><code>channel([buffer])</code></a></li>
+<li><a href="#eventchannelsubscribe-buffer"><code>eventChannel(subscribe, [buffer])</code></a></li>
+<li><a href="#buffers"><code>buffers</code></a></li>
+<li><a href="#cloneablegeneratorgeneratorfunc"><code>cloneableGenerator(generatorFunc)</code></a></li>
+<li><a href="#createmocktask"><code>createMockTask()</code></a></li></ul></li>
+</ul>
+<h1 id="cheatsheets">Cheatsheets</h1>
+<ul>
+<li><a href="#blocking--non-blocking">Blocking / Non-blocking</a></li>
+</ul>
+<h2 id="middleware-api">Middleware API</h2>
+<h3 id="createsagamiddlewareoptions"><code>createSagaMiddleware(options)</code></h3>
+<p>Creates a Redux middleware and connects the Sagas to the Redux Store</p>
+<ul>
+<li><p><code>options: Object</code> - A list of options to pass to the middleware. Currently supported options are:</p>
+<ul>
+<li><p><code>context: Object</code> - initial value of the saga's context.</p></li>
+<li><p><code>sagaMonitor</code> : <a href="#sagamonitor">SagaMonitor</a> - If a Saga Monitor is provided, the middleware will deliver monitoring events to the monitor.</p></li>
+<li><p><code>onError: (error: Error, { sagaStack: string })</code> - if provided, the middleware will call it with uncaught errors from Sagas. useful for sending uncaught exceptions to error tracking services.</p></li>
+<li><p><code>effectMiddlewares</code> : Function [] - allows you to intercept any effect, resolve it on your own and pass to the next middleware. See <a href="/docs/advanced/Testing.md#effectmiddlwares">this section</a> for a detailed example</p></li></ul></li>
+</ul>
+<h4 id="example">Example</h4>
+<p>Below we will create a function <code>configureStore</code> which will enhance the Store with a new method <code>runSaga</code>. Then in our main module, we will use the method to start the root Saga of the application.</p>
+<p><strong>configureStore.js</strong></p>
+<pre><code class="javascript language-javascript"><span class="hljs-keyword">import</span> createSagaMiddleware <span class="hljs-keyword">from</span> <span class="hljs-string">'redux-saga'</span>
+<span class="hljs-keyword">import</span> reducer <span class="hljs-keyword">from</span> <span class="hljs-string">'./path/to/reducer'</span>
+
+<span class="hljs-keyword">export</span> <span class="hljs-keyword">default</span> <span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">configureStore</span>(<span class="hljs-params">initialState</span>) </span>{
+  <span class="hljs-comment">// Note: passing middleware as the last argument to createStore requires redux@&gt;=3.1.0</span>
+  <span class="hljs-keyword">const</span> sagaMiddleware = createSagaMiddleware()
+  <span class="hljs-keyword">return</span> {
+    ...createStore(reducer, initialState, applyMiddleware(<span class="hljs-comment">/* other middleware, */</span>sagaMiddleware)),
+    <span class="hljs-attr">runSaga</span>: sagaMiddleware.run
+  }
+}</code></pre>
+<p><strong>main.js</strong></p>
+<pre><code class="javascript language-javascript"><span class="hljs-keyword">import</span> configureStore <span class="hljs-keyword">from</span> <span class="hljs-string">'./configureStore'</span>
+<span class="hljs-keyword">import</span> rootSaga <span class="hljs-keyword">from</span> <span class="hljs-string">'./sagas'</span>
+<span class="hljs-comment">// ... other imports</span>
+
+<span class="hljs-keyword">const</span> store = configureStore()
+store.runSaga(rootSaga)</code></pre>
+<h4 id="notes">Notes</h4>
+<p>See below for more information on the <code>sagaMiddleware.run</code> method.</p>
+<h3 id="middlewarerunsaga-args"><code>middleware.run(saga, ...args)</code></h3>
+<p>Dynamically run <code>saga</code>. Can be used to run Sagas <strong>only after</strong> the <code>applyMiddleware</code> phase.</p>
+<ul>
+<li><code>saga: Function</code>: a Generator function</li>
+<li><code>args: Array&lt;any&gt;</code>: arguments to be provided to <code>saga</code></li>
+</ul>
+<p>The method returns a <a href="#task-descriptor">Task descriptor</a>.</p>
+<h4 id="notes-1">Notes</h4>
+<p><code>saga</code> must be a function which returns a <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Generator">Generator Object</a>. The middleware will then iterate over the Generator and execute all yielded Effects.</p>
+<p><code>saga</code> may also start other sagas using the various Effects provided by the library. The iteration process described below is also applied to all child sagas.</p>
+<p>In the first iteration, the middleware invokes the <code>next()</code> method to retrieve the next Effect. The middleware then executes the yielded Effect as specified by the Effects API below. Meanwhile, the Generator will be suspended until the effect execution terminates. Upon receiving the result of the execution, the middleware calls <code>next(result)</code> on the Generator passing it the retrieved result as an argument. This process is repeated until the Generator terminates normally or by throwing some error.</p>
+<p>If the execution results in an error (as specified by each Effect creator) then the <code>throw(error)</code> method of the Generator is called instead. If the Generator function defines a <code>try/catch</code> surrounding the current yield instruction, then the <code>catch</code> block will be invoked by the underlying Generator runtime. The runtime will also invoke any corresponding finally block.</p>
+<p>In the case a Saga is cancelled (either manually or using the provided Effects), the middleware will invoke <code>return()</code> method of the Generator. This will cause the Generator to skip directly to the finally block.</p>
+<h2 id="effect-creators">Effect creators</h2>
+<blockquote>
+  <p>Notes:</p>
+</blockquote>
+<blockquote>
+  <ul>
+  <li>Each function below returns a plain JavaScript object and does not perform any execution.</li>
+  <li>The execution is performed by the middleware during the Iteration process described above.</li>
+  <li>The middleware examines each Effect description and performs the appropriate action.</li>
+  </ul>
+</blockquote>
+<h3 id="takepattern"><code>take(pattern)</code></h3>
+<p>Creates an Effect description that instructs the middleware to wait for a specified action on the Store.<br />
+The Generator is suspended until an action that matches <code>pattern</code> is dispatched.</p>
+<p>The result of <code>yield take(pattern)</code> is an action object being dispatched.</p>
+<p><code>pattern</code> is interpreted using the following rules:</p>
+<ul>
+<li><p>If <code>take</code> is called with no arguments or <code>'*'</code> all dispatched actions are matched (e.g. <code>take()</code> will match all actions)</p></li>
+<li><p>If it is a function, the action is matched if <code>pattern(action)</code> is true (e.g. <code>take(action =&gt; action.entities)</code> will match all actions having a (truthy) <code>entities</code> field.)</p></li>
+</ul>
+<blockquote>
+  <p>Note: if the pattern function has <code>toString</code> defined on it, <code>action.type</code> will be tested against <code>pattern.toString()</code> instead. This is useful if you're using an action creator library like redux-act or redux-actions.</p>
+</blockquote>
+<ul>
+<li><p>If it is a String, the action is matched if <code>action.type === pattern</code> (e.g. <code>take(INCREMENT_ASYNC)</code></p></li>
+<li><p>If it is an array, each item in the array is matched with aforementioned rules, so the mixed array of strings and function predicates is supported. The most common use case is an array of strings though, so that <code>action.type</code> is matched against all items in the array (e.g. <code>take([INCREMENT, DECREMENT])</code> and that would match either actions of type <code>INCREMENT</code> or <code>DECREMENT</code>).</p></li>
+</ul>
+<p>The middleware provides a special action <code>END</code>. If you dispatch the END action, then all Sagas blocked on a take Effect will be terminated regardless of the specified pattern. If the terminated Saga has still some forked tasks which are still running, it will wait for all the child tasks to terminate before terminating the Task.</p>
+<h3 id="takemaybepattern"><code>takeMaybe(pattern)</code></h3>
+<p>Same as <code>take(pattern)</code> but does not automatically terminate the Saga on an <code>END</code> action. Instead all Sagas blocked on a take Effect will get the <code>END</code> object.</p>
+<h4 id="notes-2">Notes</h4>
+<p><code>takeMaybe</code> got its name from the FP analogy - it's like instead of having a return type of <code>ACTION</code> (with automatic handling) we can have a type of <code>Maybe(ACTION)</code> so we can handle both cases:</p>
+<ul>
+<li><p>case when there is a <code>Just(ACTION)</code> (we have an action)</p></li>
+<li><p>the case of <code>NOTHING</code> (channel was closed*). i.e. we need some way to map over <code>END</code></p></li>
+<li><p>internally all <code>dispatch</code>ed actions are going through the <code>stdChannel</code> which is getting closed when <code>dispatch(END)</code> happens</p></li>
+</ul>
+<h3 id="takechannel"><code>take(channel)</code></h3>
+<p>Creates an Effect description that instructs the middleware to wait for a specified message from the provided Channel. If the channel is already closed, then the Generator will immediately terminate following the same process described above for <code>take(pattern)</code>.</p>
+<h3 id="takemaybechannel"><code>takeMaybe(channel)</code></h3>
+<p>Same as <code>take(channel)</code> but does not automatically terminate the Saga on an <code>END</code> action. Instead all Sagas blocked on a take Effect will get the <code>END</code> object. See more <a href="#takemaybepattern">here</a></p>
+<h3 id="takeeverypattern-saga-args"><code>takeEvery(pattern, saga, ...args)</code></h3>
+<p>Spawns a <code>saga</code> on each action dispatched to the Store that matches <code>pattern</code>.</p>
+<ul>
+<li><p><code>pattern: String | Array | Function</code> - for more information see docs for <a href="#takepattern"><code>take(pattern)</code></a></p></li>
+<li><p><code>saga: Function</code> - a Generator function</p></li>
+<li><p><code>args: Array&lt;any&gt;</code> - arguments to be passed to the started task. <code>takeEvery</code> will add the incoming action to the argument list (i.e. the action will be the last argument provided to <code>saga</code>)</p></li>
+</ul>
+<h4 id="example-1">Example</h4>
+<p>In the following example, we create a basic task <code>fetchUser</code>. We use <code>takeEvery</code> to start a new <code>fetchUser</code> task on each dispatched <code>USER_REQUESTED</code> action:</p>
+<pre><code class="javascript language-javascript"><span class="hljs-keyword">import</span> { takeEvery } <span class="hljs-keyword">from</span> <span class="hljs-string">`redux-saga/effects`</span>
+
+<span class="hljs-function"><span class="hljs-keyword">function</span>* <span class="hljs-title">fetchUser</span>(<span class="hljs-params">action</span>) </span>{
+  ...
+}
+
+<span class="hljs-function"><span class="hljs-keyword">function</span>* <span class="hljs-title">watchFetchUser</span>(<span class="hljs-params"></span>) </span>{
+  <span class="hljs-keyword">yield</span> takeEvery(<span class="hljs-string">'USER_REQUESTED'</span>, fetchUser)
+}</code></pre>
+<h4 id="notes-3">Notes</h4>
+<p><code>takeEvery</code> is a high-level API built using <code>take</code> and <code>fork</code>. Here is how the helper could be implemented using the low-level Effects</p>
+<pre><code class="javascript language-javascript">const takeEvery = (<span class="hljs-name">patternOrChannel</span>, saga, ...args) =&gt; fork(<span class="hljs-name">function*</span>() {
+  while (<span class="hljs-name">true</span>) {
+    const action = yield take(<span class="hljs-name">patternOrChannel</span>)
+    yield fork(<span class="hljs-name">saga</span>, ...args.concat(<span class="hljs-name">action</span>))
+  }
+})</code></pre>
+<p><code>takeEvery</code> allows concurrent actions to be handled. In the example above, when a <code>USER_REQUESTED</code><br />
+action is dispatched, a new <code>fetchUser</code> task is started even if a previous <code>fetchUser</code> is still pending<br />
+(for example, the user clicks on a <code>Load User</code> button 2 consecutive times at a rapid rate, the 2nd<br />
+click will dispatch a <code>USER_REQUESTED</code> action while the <code>fetchUser</code> fired on the first one hasn't yet terminated)</p>
+<p><code>takeEvery</code> doesn't handle out of order responses from tasks. There is no guarantee that the tasks will<br />
+terminate in the same order they were started. To handle out of order responses, you may consider <code>takeLatest</code><br />
+below.</p>
+<h3 id="takeeverychannel-saga-args"><code>takeEvery(channel, saga, ...args)</code></h3>
+<p>You can also pass in a channel as argument and the behaviour is the same as <a href="#takeeverypattern-saga-args">takeEvery(pattern, saga, …args)</a>.</p>
+<h3 id="takelatestpattern-saga-args"><code>takeLatest(pattern, saga, ...args)</code></h3>
+<p>Spawns a <code>saga</code> on each action dispatched to the Store that matches <code>pattern</code>. And automatically cancels<br />
+any previous <code>saga</code> task started previously if it's still running.</p>
+<p>Each time an action is dispatched to the store. And if this action matches <code>pattern</code>, <code>takeLatest</code><br />
+starts a new <code>saga</code> task in the background. If a <code>saga</code> task was started previously (on the last action dispatched<br />
+before the actual action), and if this task is still running, the task will be cancelled.</p>
+<ul>
+<li><p><code>pattern: String | Array | Function</code> - for more information see docs for <a href="#takepattern"><code>take(pattern)</code></a></p></li>
+<li><p><code>saga: Function</code> - a Generator function</p></li>
+<li><p><code>args: Array&lt;any&gt;</code> - arguments to be passed to the started task. <code>takeLatest</code> will add the<br />
+incoming action to the argument list (i.e. the action will be the last argument provided to <code>saga</code>)</p></li>
+</ul>
+<h4 id="example-2">Example</h4>
+<p>In the following example, we create a basic task <code>fetchUser</code>. We use <code>takeLatest</code> to<br />
+start a new <code>fetchUser</code> task on each dispatched <code>USER_REQUESTED</code> action. Since <code>takeLatest</code><br />
+cancels any pending task started previously, we ensure that if a user triggers multiple consecutive<br />
+<code>USER_REQUESTED</code> actions rapidly, we'll only conclude with the latest action</p>
+<pre><code class="javascript language-javascript"><span class="hljs-keyword">import</span> { takeLatest } <span class="hljs-keyword">from</span> <span class="hljs-string">`redux-saga/effects`</span>
+
+<span class="hljs-function"><span class="hljs-keyword">function</span>* <span class="hljs-title">fetchUser</span>(<span class="hljs-params">action</span>) </span>{
+  ...
+}
+
+<span class="hljs-function"><span class="hljs-keyword">function</span>* <span class="hljs-title">watchLastFetchUser</span>(<span class="hljs-params"></span>) </span>{
+  <span class="hljs-keyword">yield</span> takeLatest(<span class="hljs-string">'USER_REQUESTED'</span>, fetchUser)
+}</code></pre>
+<h4 id="notes-4">Notes</h4>
+<p><code>takeLatest</code> is a high-level API built using <code>take</code> and <code>fork</code>. Here is how the helper could be implemented using the low-level Effects</p>
+<pre><code class="javascript language-javascript">const takeLatest = (<span class="hljs-name">patternOrChannel</span>, saga, ...args) =&gt; fork(<span class="hljs-name">function*</span>() {
+  let lastTask
+  while (<span class="hljs-name">true</span>) {
+    const action = yield take(<span class="hljs-name">patternOrChannel</span>)
+    if (<span class="hljs-name">lastTask</span>) {
+      yield cancel(<span class="hljs-name">lastTask</span>) // cancel is no-op if the task has already terminated
+    }
+    lastTask = yield fork(<span class="hljs-name">saga</span>, ...args.concat(<span class="hljs-name">action</span>))
+  }
+})</code></pre>
+<h3 id="takelatestchannel-saga-args"><code>takeLatest(channel, saga, ...args)</code></h3>
+<p>You can also pass in a channel as argument and the behaviour is the same as <a href="#takelatestpattern-saga-args">takeLatest(pattern, saga, …args)</a>.</p>
+<h3 id="takeleadingpattern-saga-args"><code>takeLeading(pattern, saga, ...args)</code></h3>
+<p>Spawns a <code>saga</code> on each action dispatched to the Store that matches <code>pattern</code>.<br />
+After spawning a task once, it blocks until spawned saga completes and then starts to listen for a <code>pattern</code> again.</p>
+<p>In short, <code>takeLeading</code> is listening for the actions when it doesn't run a saga.</p>
+<ul>
+<li><p><code>pattern: String | Array | Function</code> - for more information see docs for <a href="#takepattern"><code>take(pattern)</code></a></p></li>
+<li><p><code>saga: Function</code> - a Generator function</p></li>
+<li><p><code>args: Array&lt;any&gt;</code> - arguments to be passed to the started task. <code>takeLeading</code> will add the<br />
+incoming action to the argument list (i.e. the action will be the last argument provided to <code>saga</code>)</p></li>
+</ul>
+<h4 id="example-3">Example</h4>
+<p>In the following example, we create a basic task <code>fetchUser</code>. We use <code>takeLeading</code> to<br />
+start a new <code>fetchUser</code> task on each dispatched <code>USER_REQUESTED</code> action. Since <code>takeLeading</code><br />
+ignores any new coming task after it's started, we ensure that if a user triggers multiple consecutive<br />
+<code>USER_REQUESTED</code> actions rapidly, we'll only keep on running with the leading action</p>
+<pre><code class="javascript language-javascript"><span class="hljs-keyword">import</span> { takeLeading } <span class="hljs-keyword">from</span> <span class="hljs-string">`redux-saga/effects`</span>
+
+<span class="hljs-function"><span class="hljs-keyword">function</span>* <span class="hljs-title">fetchUser</span>(<span class="hljs-params">action</span>) </span>{
+  ...
+}
+
+<span class="hljs-function"><span class="hljs-keyword">function</span>* <span class="hljs-title">watchLastFetchUser</span>(<span class="hljs-params"></span>) </span>{
+  <span class="hljs-keyword">yield</span> takeLeading(<span class="hljs-string">'USER_REQUESTED'</span>, fetchUser)
+}</code></pre>
+<h4 id="notes-5">Notes</h4>
+<p><code>takeLeading</code> is a high-level API built using <code>take</code> and <code>call</code>. Here is how the helper could be implemented using the low-level Effects</p>
+<pre><code class="javascript language-javascript">const takeLeading = (<span class="hljs-name">patternOrChannel</span>, saga, ...args) =&gt; fork(<span class="hljs-name">function*</span>() {
+  while (<span class="hljs-name">true</span>) {
+    const action = yield take(<span class="hljs-name">patternOrChannel</span>)<span class="hljs-comment">;</span>
+    yield call(<span class="hljs-name">saga</span>, ...args.concat(<span class="hljs-name">action</span>))<span class="hljs-comment">;</span>
+  }
+})</code></pre>
+<h3 id="takeleadingchannel-saga-args"><code>takeLeading(channel, saga, ...args)</code></h3>
+<p>You can also pass in a channel as argument and the behavior is the same as <a href="#takeleadingpattern-saga-args">takeLeading(pattern, saga, …args)</a>.</p>
+<h3 id="putaction"><code>put(action)</code></h3>
+<p>Creates an Effect description that instructs the middleware to dispatch an action to the Store.<br />
+This effect is non-blocking and any errors that are thrown downstream (e.g. in a reducer) will<br />
+not bubble back into the saga.</p>
+<ul>
+<li><code>action: Object</code> - <a href="http://redux.js.org/docs/api/Store.html#dispatch">see Redux <code>dispatch</code> documentation for complete info</a></li>
+</ul>
+<h3 id="putresolveaction"><code>putResolve(action)</code></h3>
+<p>Just like <a href="#putaction"><code>put</code></a> but the effect is blocking (if promise is returned from <code>dispatch</code> it will wait for its resolution) and will bubble up errors from downstream.</p>
+<ul>
+<li><code>action: Object</code> - <a href="http://redux.js.org/docs/api/Store.html#dispatch">see Redux <code>dispatch</code> documentation for complete info</a></li>
+</ul>
+<h3 id="putchannel-action"><code>put(channel, action)</code></h3>
+<p>Creates an Effect description that instructs the middleware to put an action into the provided channel.</p>
+<ul>
+<li><code>channel: Channel</code> - a <a href="#channel"><code>Channel</code></a> Object.</li>
+<li><code>action: Object</code> - <a href="http://redux.js.org/docs/api/Store.html#dispatch">see Redux <code>dispatch</code> documentation for complete info</a></li>
+</ul>
+<p>This effect is blocking if the put is <em>not</em> buffered but immediately consumed by takers. If an error<br />
+is thrown in any of these takers it will bubble back into the saga.</p>
+<h3 id="callfn-args"><code>call(fn, ...args)</code></h3>
+<p>Creates an Effect description that instructs the middleware to call the function <code>fn</code> with <code>args</code> as arguments.</p>
+<ul>
+<li><code>fn: Function</code> - A Generator function, or normal function which either returns a Promise as result, or any other value.</li>
+<li><code>args: Array&lt;any&gt;</code> - An array of values to be passed as arguments to <code>fn</code></li>
+</ul>
+<h4 id="notes-6">Notes</h4>
+<p><code>fn</code> can be either a <em>normal</em> or a Generator function.</p>
+<p>The middleware invokes the function and examines its result.</p>
+<p>If the result is an Iterator object, the middleware will run that Generator function, just like it did with the<br />
+startup Generators (passed to the middleware on startup). The parent Generator will be<br />
+suspended until the child Generator terminates normally, in which case the parent Generator<br />
+is resumed with the value returned by the child Generator. Or until the child aborts with some<br />
+error, in which case an error will be thrown inside the parent Generator.</p>
+<p>If <code>fn</code> is a normal function and returns a Promise, the middleware will suspend the Generator until the Promise is<br />
+settled. After the promise is resolved the Generator is resumed with the resolved value, or if the Promise<br />
+is rejected an error is thrown inside the Generator.</p>
+<p>If the result is not an Iterator object nor a Promise, the middleware will immediately return that value back to the saga,<br />
+so that it can resume its execution synchronously.</p>
+<p>When an error is thrown inside the Generator, if it has a <code>try/catch</code> block surrounding the<br />
+current <code>yield</code> instruction, the control will be passed to the <code>catch</code> block. Otherwise,<br />
+the Generator aborts with the raised error, and if this Generator was called by another<br />
+Generator, the error will propagate to the calling Generator.</p>
+<h3 id="callcontext-fn-args"><code>call([context, fn], ...args)</code></h3>
+<p>Same as <code>call(fn, ...args)</code> but supports passing a <code>this</code> context to <code>fn</code>. This is useful to<br />
+invoke object methods.</p>
+<h3 id="callcontext-fnname-args"><code>call([context, fnName], ...args)</code></h3>
+<p>Same as <code>call([context, fn], ...args)</code> but supports passing a <code>fn</code> as string. Useful for invoking object's methods, i.e. <code>yield call([localStorage, 'getItem'], 'redux-saga')</code></p>
+<h3 id="callcontext-fn-args-1"><code>call({context, fn}, ...args)</code></h3>
+<p>Same as <code>call([context, fn], ...args)</code> but supports passing <code>context</code> and <code>fn</code> as properties of an object, i.e. <code>yield call({context: localStorage, fn: localStorage.getItem}, 'redux-saga')</code>. <code>fn</code> can be a string or a function.</p>
+<h3 id="applycontext-fn-args"><code>apply(context, fn, [args])</code></h3>
+<p>Alias for <code>call([context, fn], ...args)</code>.</p>
+<h3 id="cpsfn-args"><code>cps(fn, ...args)</code></h3>
+<p>Creates an Effect description that instructs the middleware to invoke <code>fn</code> as a Node style function.</p>
+<ul>
+<li><p><code>fn: Function</code> - a Node style function. i.e. a function which accepts in addition to its arguments,<br />
+an additional callback to be invoked by <code>fn</code> when it terminates. The callback accepts two parameters,<br />
+where the first parameter is used to report errors while the second is used to report successful results</p></li>
+<li><p><code>args: Array&lt;any&gt;</code> - an array to be passed as arguments for <code>fn</code></p></li>
+</ul>
+<h4 id="notes-7">Notes</h4>
+<p>The middleware will perform a call <code>fn(...arg, cb)</code>. The <code>cb</code> is a callback passed by the middleware to<br />
+<code>fn</code>. If <code>fn</code> terminates normally, it must call <code>cb(null, result)</code> to notify the middleware<br />
+of a successful result. If <code>fn</code> encounters some error, then it must call <code>cb(error)</code> in order to<br />
+notify the middleware that an error has occurred.</p>
+<p>The middleware remains suspended until <code>fn</code> terminates.</p>
+<h3 id="cpscontext-fn-args"><code>cps([context, fn], ...args)</code></h3>
+<p>Supports passing a <code>this</code> context to <code>fn</code> (object method invocation)</p>
+<h3 id="cpscontext-fn-args-1"><code>cps({context, fn}, ...args)</code></h3>
+<p>Same as <code>cps([context, fn], ...args)</code> but supports passing <code>context</code> and <code>fn</code> as properties of an object. <code>fn</code> can be a string or a function.</p>
+<h3 id="forkfn-args"><code>fork(fn, ...args)</code></h3>
+<p>Creates an Effect description that instructs the middleware to perform a <em>non-blocking call</em> on <code>fn</code></p>
+<h4 id="arguments">Arguments</h4>
+<ul>
+<li><code>fn: Function</code> - A Generator function, or normal function which returns a Promise as result</li>
+<li><code>args: Array&lt;any&gt;</code> - An array of values to be passed as arguments to <code>fn</code></li>
+</ul>
+<p>returns a <a href="#task">Task</a> object.</p>
+<h4 id="notes-8">Notes</h4>
+<p><code>fork</code>, like <code>call</code>, can be used to invoke both normal and Generator functions. But, the calls are<br />
+non-blocking, the middleware doesn't suspend the Generator while waiting for the result of <code>fn</code>.<br />
+Instead as soon as <code>fn</code> is invoked, the Generator resumes immediately.</p>
+<p><code>fork</code>, alongside <code>race</code>, is a central Effect for managing concurrency between Sagas.</p>
+<p>The result of <code>yield fork(fn ...args)</code> is a <a href="#task">Task</a> object.  An object with some useful<br />
+methods and properties.</p>
+<p>All forked tasks are <em>attached</em> to their parents. When the parent terminates the execution of its<br />
+own body of instructions, it will wait for all forked tasks to terminate before returning.</p>
+<h4 id="error-propagation">Error propagation</h4>
+<p>Errors from child tasks automatically bubble up to their parents. If any forked task raises an uncaught error, then<br />
+the parent task will abort with the child Error, and the whole Parent's execution tree (i.e. forked tasks + the<br />
+<em>main task</em> represented by the parent's body if it's still running) will be cancelled.</p>
+<p>Cancellation of a forked Task will automatically cancel all forked tasks that are still executing. It'll<br />
+also cancel the current Effect where the cancelled task was blocked (if any).</p>
+<p>If a forked task fails <em>synchronously</em> (ie: fails immediately after its execution before performing any<br />
+async operation), then no Task is returned, instead the parent will be aborted as soon as possible (since both<br />
+parent and child execute in parallel, the parent will abort as soon as it takes notice of the child failure).</p>
+<p>To create <em>detached</em> forks, use <code>spawn</code> instead.</p>
+<h3 id="forkcontext-fn-args"><code>fork([context, fn], ...args)</code></h3>
+<p>Supports invoking forked functions with a <code>this</code> context</p>
+<h3 id="forkcontext-fn-args-1"><code>fork({context, fn}, ...args)</code></h3>
+<p>Same as <code>fork([context, fn], ...args)</code> but supports passing <code>context</code> and <code>fn</code> as properties of an object. <code>fn</code> can be a string or a function.</p>
+<h3 id="spawnfn-args"><code>spawn(fn, ...args)</code></h3>
+<p>Same as <code>fork(fn, ...args)</code> but creates a <em>detached</em> task. A detached task remains independent from its parent and acts like<br />
+a top-level task. The parent will not wait for detached tasks to terminate before returning and all events which may affect the<br />
+parent or the detached task are completely independents (error, cancellation).</p>
+<h3 id="spawncontext-fn-args"><code>spawn([context, fn], ...args)</code></h3>
+<p>Supports spawning functions with a <code>this</code> context</p>
+<h3 id="jointask"><code>join(task)</code></h3>
+<p>Creates an Effect description that instructs the middleware to wait for the result<br />
+of a previously forked task.</p>
+<ul>
+<li><code>task: Task</code> - A <a href="#task">Task</a> object returned by a previous <code>fork</code></li>
+</ul>
+<h4 id="notes-9">Notes</h4>
+<p><code>join</code> will resolve to the same outcome of the joined task (success or error). If the joined<br />
+task is cancelled, the cancellation will also propagate to the Saga executing the join<br />
+effect. Similarly, any potential callers of those joiners will be cancelled as well.</p>
+<h3 id="jointasks"><code>join([...tasks])</code></h3>
+<p>Creates an Effect description that instructs the middleware to wait for the results of previously forked tasks.</p>
+<ul>
+<li><code>tasks: Array&lt;Task&gt;</code> - A <a href="#task">Task</a> is the object returned by a previous <code>fork</code></li>
+</ul>
+<h4 id="notes-10">Notes</h4>
+<p>It wraps the array of tasks in <a href="#jointask">join effects</a>, roughly becoming the equivalent of<br />
+<code>yield tasks.map(t =&gt; join(t))</code>.</p>
+<h3 id="canceltask"><code>cancel(task)</code></h3>
+<p>Creates an Effect description that instructs the middleware to cancel a previously forked task.</p>
+<ul>
+<li><code>task: Task</code> - A <a href="#task">Task</a> object returned by a previous <code>fork</code></li>
+</ul>
+<h4 id="notes-11">Notes</h4>
+<p>To cancel a running task, the middleware will invoke <code>return</code> on the underlying Generator<br />
+object. This will cancel the current Effect in the task and jump to the finally block (if defined).</p>
+<p>Inside the finally block, you can execute any cleanup logic or dispatch some action to keep the<br />
+store in a consistent state (e.g. reset the state of a spinner to false when an ajax request<br />
+is cancelled). You can check inside the finally block if a Saga was cancelled by issuing<br />
+a <code>yield cancelled()</code>.</p>
+<p>Cancellation propagates downward to child sagas. When cancelling a task, the middleware will also<br />
+cancel the current Effect (where the task is currently blocked). If the current Effect<br />
+is a call to another Saga, it will be also cancelled. When cancelling a Saga, all <em>attached
+forks</em> (sagas forked using <code>yield fork()</code>) will be cancelled. This means that cancellation<br />
+effectively affects the whole execution tree that belongs to the cancelled task.</p>
+<p><code>cancel</code> is a non-blocking Effect. i.e. the Saga executing it will resume immediately after<br />
+performing the cancellation.</p>
+<p>For functions which return Promise results, you can plug your own cancellation logic<br />
+by attaching a <code>[CANCEL]</code> to the promise.</p>
+<p>The following example shows how to attach cancellation logic to a Promise result:</p>
+<pre><code class="javascript language-javascript"><span class="hljs-keyword">import</span> { CANCEL } <span class="hljs-keyword">from</span> <span class="hljs-string">'redux-saga'</span>
+<span class="hljs-keyword">import</span> { fork, cancel } <span class="hljs-keyword">from</span> <span class="hljs-string">'redux-saga/effects'</span>
+
+<span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">myApi</span>(<span class="hljs-params"></span>) </span>{
+  <span class="hljs-keyword">const</span> promise = myXhr(...)
+
+  promise[CANCEL] = <span class="hljs-function"><span class="hljs-params">()</span> =&gt;</span> myXhr.abort()
+  <span class="hljs-keyword">return</span> promise
+}
+
+<span class="hljs-function"><span class="hljs-keyword">function</span>* <span class="hljs-title">mySaga</span>(<span class="hljs-params"></span>) </span>{
+
+  <span class="hljs-keyword">const</span> task = <span class="hljs-keyword">yield</span> fork(myApi)
+
+  <span class="hljs-comment">// ... later</span>
+  <span class="hljs-comment">// will call promise[CANCEL] on the result of myApi</span>
+  <span class="hljs-keyword">yield</span> cancel(task)
+}</code></pre>
+<p>redux-saga will automatically cancel jqXHR objects using their <code>abort</code> method.</p>
+<h3 id="canceltasks"><code>cancel([...tasks])</code></h3>
+<p>Creates an Effect description that instructs the middleware to cancel previously forked tasks.</p>
+<ul>
+<li><code>tasks: Array&lt;Task&gt;</code> - A <a href="#task">Task</a> is the object returned by a previous <code>fork</code></li>
+</ul>
+<h4 id="notes-12">Notes</h4>
+<p>It wraps the array of tasks in <a href="#canceltask">cancel effects</a>, roughly becoming the equivalent of<br />
+<code>yield tasks.map(t =&gt; cancel(t))</code>.</p>
+<h3 id="cancel"><code>cancel()</code></h3>
+<p>Creates an Effect description that instructs the middleware to cancel a task in which it has been yielded (self-cancellation).<br />
+It allows to reuse destructor-like logic inside a <code>finally</code> blocks for both outer (<code>cancel(task)</code>) and self (<code>cancel()</code>) cancellations.</p>
+<h4 id="example-4">Example</h4>
+<pre><code class="javascript language-javascript"><span class="hljs-function"><span class="hljs-keyword">function</span>* <span class="hljs-title">deleteRecord</span>(<span class="hljs-params">{ payload }</span>) </span>{
+  <span class="hljs-keyword">try</span> {
+    <span class="hljs-keyword">const</span> { confirm, deny } = <span class="hljs-keyword">yield</span> call(prompt);
+    <span class="hljs-keyword">if</span> (confirm) {
+      <span class="hljs-keyword">yield</span> put(actions.deleteRecord.confirmed())
+    }
+    <span class="hljs-keyword">if</span> (deny) {
+      <span class="hljs-keyword">yield</span> cancel()
+    }
+  } <span class="hljs-keyword">catch</span>(e) {
+    <span class="hljs-comment">// handle failure</span>
+  } <span class="hljs-keyword">finally</span> {
+    <span class="hljs-keyword">if</span> (<span class="hljs-keyword">yield</span> cancelled()) {
+      <span class="hljs-comment">// shared cancellation logic</span>
+      <span class="hljs-keyword">yield</span> put(actions.deleteRecord.cancel(payload))
+    }
+  }
+}</code></pre>
+<h3 id="selectselector-args"><code>select(selector, ...args)</code></h3>
+<p>Creates an effect that instructs the middleware to invoke the provided selector on the<br />
+current Store's state (i.e. returns the result of <code>selector(getState(), ...args)</code>).</p>
+<ul>
+<li><p><code>selector: Function</code> - a function <code>(state, ...args) =&gt; args</code>. It takes the<br />
+current state and optionally some arguments and returns a slice of the current Store's state</p></li>
+<li><p><code>args: Array&lt;any&gt;</code> - optional arguments to be passed to the selector in addition of <code>getState</code>.</p></li>
+</ul>
+<p>If <code>select</code> is called without argument (i.e. <code>yield select()</code>) then the effect is resolved<br />
+with the entire state (the same result of a <code>getState()</code> call).</p>
+<blockquote>
+  <p>It's important to note that when an action is dispatched to the store, the middleware first<br />
+  forwards the action to the reducers and then notifies the Sagas. This means that when you query the<br />
+  Store's State, you get the State <strong>after</strong> the action has been applied.<br />
+  However, this behavior is only guaranteed if all subsequent middlewares call <code>next(action)</code> synchronously.  If any subsequent middleware calls <code>next(action)</code> asynchronously (which is unusual but possible), then the sagas will get the state from <strong>before</strong> the action is applied.  Therefore it is recommended to review the source of each subsequent middleware to ensure it calls <code>next(action)</code> synchronously, or else ensure that redux-saga is the last middleware in the call chain.</p>
+</blockquote>
+<h4 id="notes-13">Notes</h4>
+<p>Preferably, a Saga should be autonomous and should not depend on the Store's state. This makes<br />
+it easy to modify the state implementation without affecting the Saga code. A saga should preferably<br />
+depend only on its own internal control state when possible. But sometimes, one could<br />
+find it more convenient for a Saga to query the state instead of maintaining the needed data by itself<br />
+(for example, when a Saga duplicates the logic of invoking some reducer to compute a state that was<br />
+already computed by the Store).</p>
+<p>For example, suppose we have this state shape in our application:</p>
+<pre><code class="javascript language-javascript">state = {
+  cart: <span class="hljs-meta">{...}</span>
+}</code></pre>
+<p>We can create a <em>selector</em>, i.e. a function which knows how to extract the <code>cart</code> data from the State:</p>
+<p><code>./selectors</code></p>
+<pre><code class="javascript language-javascript">export const getCart = <span class="hljs-keyword">state</span> =&gt; <span class="hljs-keyword">state</span>.cart</code></pre>
+<p>Then we can use that selector from inside a Saga using the <code>select</code> Effect:</p>
+<p><code>./sagas.js</code></p>
+<pre><code class="javascript language-javascript"><span class="hljs-keyword">import</span> { take, fork, select } <span class="hljs-keyword">from</span> <span class="hljs-string">'redux-saga/effects'</span>
+<span class="hljs-keyword">import</span> { getCart } <span class="hljs-keyword">from</span> <span class="hljs-string">'./selectors'</span>
+
+<span class="hljs-function"><span class="hljs-keyword">function</span>* <span class="hljs-title">checkout</span>(<span class="hljs-params"></span>) </span>{
+  <span class="hljs-comment">// query the state using the exported selector</span>
+  <span class="hljs-keyword">const</span> cart = <span class="hljs-keyword">yield</span> select(getCart)
+
+  <span class="hljs-comment">// ... call some API endpoint then dispatch a success/error action</span>
+}
+
+<span class="hljs-keyword">export</span> <span class="hljs-keyword">default</span> <span class="hljs-function"><span class="hljs-keyword">function</span>* <span class="hljs-title">rootSaga</span>(<span class="hljs-params"></span>) </span>{
+  <span class="hljs-keyword">while</span> (<span class="hljs-literal">true</span>) {
+    <span class="hljs-keyword">yield</span> take(<span class="hljs-string">'CHECKOUT_REQUEST'</span>)
+    <span class="hljs-keyword">yield</span> fork(checkout)
+  }
+}</code></pre>
+<p><code>checkout</code> can get the needed information directly by using <code>select(getCart)</code>. The Saga is coupled only with the <code>getCart</code> selector. If we have many Sagas (or React Components) that needs to access the <code>cart</code> slice, they will all be coupled to the same function <code>getCart</code>. And if we now change the state shape, we need only to update <code>getCart</code>.</p>
+<h3 id="actionchannelpattern-buffer"><code>actionChannel(pattern, [buffer])</code></h3>
+<p>Creates an effect that instructs the middleware to queue the actions matching <code>pattern</code> using an event channel. Optionally, you can provide a buffer to control buffering of the queued actions.</p>
+<ul>
+<li><code>pattern:</code> - see API for <code>take(pattern)</code></li>
+<li><code>buffer: Buffer</code> - a <a href="#buffer">Buffer</a> object</li>
+</ul>
+<h4 id="example-5">Example</h4>
+<p>The following code creates a channel to buffer all <code>USER_REQUEST</code> actions. Note that even the Saga may be blocked<br />
+on the <code>call</code> effect. All actions that come while it's blocked are automatically buffered. This causes the Saga<br />
+to execute the API calls one at a time</p>
+<pre><code class="javascript language-javascript"><span class="hljs-keyword">import</span> { actionChannel, call } <span class="hljs-keyword">from</span> <span class="hljs-string">'redux-saga/effects'</span>
+<span class="hljs-keyword">import</span> api <span class="hljs-keyword">from</span> <span class="hljs-string">'...'</span>
+
+<span class="hljs-function"><span class="hljs-keyword">function</span>* <span class="hljs-title">takeOneAtMost</span>(<span class="hljs-params"></span>) </span>{
+  <span class="hljs-keyword">const</span> chan = <span class="hljs-keyword">yield</span> actionChannel(<span class="hljs-string">'USER_REQUEST'</span>)
+  <span class="hljs-keyword">while</span> (<span class="hljs-literal">true</span>) {
+    <span class="hljs-keyword">const</span> {payload} = <span class="hljs-keyword">yield</span> take(chan)
+    <span class="hljs-keyword">yield</span> call(api.getUser, payload)
+  }
+}</code></pre>
+<h3 id="flushchannel"><code>flush(channel)</code></h3>
+<p>Creates an effect that instructs the middleware to flush all buffered items from the channel. Flushed items are returned back to the saga, so they can be utilized if needed.</p>
+<ul>
+<li><code>channel: Channel</code> - a <a href="#channel"><code>Channel</code></a> Object.</li>
+</ul>
+<h4 id="example-6">Example</h4>
+<pre><code class="javascript language-javascript"><span class="hljs-function"><span class="hljs-keyword">function</span>* <span class="hljs-title">saga</span>(<span class="hljs-params"></span>) </span>{
+  <span class="hljs-keyword">const</span> chan = <span class="hljs-keyword">yield</span> actionChannel(<span class="hljs-string">'ACTION'</span>)
+
+  <span class="hljs-keyword">try</span> {
+    <span class="hljs-keyword">while</span> (<span class="hljs-literal">true</span>) {
+      <span class="hljs-keyword">const</span> action = <span class="hljs-keyword">yield</span> take(chan)
+      <span class="hljs-comment">// ...</span>
+    }
+  } <span class="hljs-keyword">finally</span> {
+    <span class="hljs-keyword">const</span> actions = <span class="hljs-keyword">yield</span> flush(chan)
+    <span class="hljs-comment">// ...</span>
+  }
+
+}</code></pre>
+<h3 id="cancelled"><code>cancelled()</code></h3>
+<p>Creates an effect that instructs the middleware to return whether this generator has been cancelled. Typically<br />
+you use this Effect in a finally block to run Cancellation specific code</p>
+<h4 id="example-7">Example</h4>
+<pre><code class="javascript language-javascript">function* saga() {
+  try {
+    // ...
+  }<span class="hljs-keyword"> final</span>ly {
+   <span class="hljs-built_in"> if </span>(yield cancelled()) {
+      // logic that should<span class="hljs-built_in"> execute </span>only on Cancellation
+    }
+    // logic that should<span class="hljs-built_in"> execute </span>in all situations (e.g. closing a channel)
+  }
+}</code></pre>
+<h3 id="setcontextprops"><code>setContext(props)</code></h3>
+<p>Creates an effect that instructs the middleware to update its own context. This effect extends<br />
+saga's context instead of replacing it.</p>
+<h3 id="getcontextprop"><code>getContext(prop)</code></h3>
+<p>Creates an effect that instructs the middleware to return a specific property of saga's context.</p>
+<h3 id="delayms-val"><code>delay(ms, [val])</code></h3>
+<p>Returns an effect descriptor to block execution for <code>ms</code> milliseconds and return <code>val</code> value.</p>
+<h3 id="throttlems-pattern-saga-args"><code>throttle(ms, pattern, saga, ...args)</code></h3>
+<p>Spawns a <code>saga</code> on an action dispatched to the Store that matches <code>pattern</code>. After spawning a task it's still accepting incoming actions into the underlying <code>buffer</code>, keeping at most 1 (the most recent one), but in the same time holding up with spawning new task for <code>ms</code> milliseconds (hence its name - <code>throttle</code>). Purpose of this is to ignore incoming actions for a given period of time while processing a task.</p>
+<ul>
+<li><p><code>ms: Number</code> - length of a time window in milliseconds during which actions will be ignored after the action starts processing</p></li>
+<li><p><code>pattern: String | Array | Function</code> - for more information see docs for <a href="#takepattern"><code>take(pattern)</code></a></p></li>
+<li><p><code>saga: Function</code> - a Generator function</p></li>
+<li><p><code>args: Array&lt;any&gt;</code> - arguments to be passed to the started task. <code>throttle</code> will add the<br />
+incoming action to the argument list (i.e. the action will be the last argument provided to <code>saga</code>)</p></li>
+</ul>
+<h4 id="example-8">Example</h4>
+<p>In the following example, we create a basic task <code>fetchAutocomplete</code>. We use <code>throttle</code> to<br />
+start a new <code>fetchAutocomplete</code> task on dispatched <code>FETCH_AUTOCOMPLETE</code> action. However since <code>throttle</code> ignores consecutive <code>FETCH_AUTOCOMPLETE</code> for some time, we ensure that user won't flood our server with requests.</p>
+<pre><code class="javascript language-javascript"><span class="hljs-keyword">import</span> { call, put, throttle } <span class="hljs-keyword">from</span> <span class="hljs-string">`redux-saga/effects`</span>
+
+<span class="hljs-function"><span class="hljs-keyword">function</span>* <span class="hljs-title">fetchAutocomplete</span>(<span class="hljs-params">action</span>) </span>{
+  <span class="hljs-keyword">const</span> autocompleteProposals = <span class="hljs-keyword">yield</span> call(Api.fetchAutocomplete, action.text)
+  <span class="hljs-keyword">yield</span> put({<span class="hljs-attr">type</span>: <span class="hljs-string">'FETCHED_AUTOCOMPLETE_PROPOSALS'</span>, <span class="hljs-attr">proposals</span>: autocompleteProposals})
+}
+
+<span class="hljs-function"><span class="hljs-keyword">function</span>* <span class="hljs-title">throttleAutocomplete</span>(<span class="hljs-params"></span>) </span>{
+  <span class="hljs-keyword">yield</span> throttle(<span class="hljs-number">1000</span>, <span class="hljs-string">'FETCH_AUTOCOMPLETE'</span>, fetchAutocomplete)
+}</code></pre>
+<h4 id="notes-14">Notes</h4>
+<p><code>throttle</code> is a high-level API built using <code>take</code>, <code>fork</code> and <code>actionChannel</code>. Here is how the helper could be implemented using the low-level Effects</p>
+<pre><code class="javascript language-javascript">const throttle = (<span class="hljs-name">ms</span>, pattern, task, ...args) =&gt; fork(<span class="hljs-name">function*</span>() {
+  const throttleChannel = yield actionChannel(<span class="hljs-name">pattern</span>, buffers.sliding(<span class="hljs-number">1</span>))
+
+  while (<span class="hljs-name">true</span>) {
+    const action = yield take(<span class="hljs-name">throttleChannel</span>)
+    yield fork(<span class="hljs-name">task</span>, ...args, action)
+    yield delay(<span class="hljs-name">ms</span>)
+  }
+})</code></pre>
+<h3 id="throttlems-channel-saga-args"><code>throttle(ms, channel, saga, ...args)</code></h3>
+<p>You can also handle a channel as argument and the behaviour is the same as <a href="#throttlems-pattern-saga-args"><code>throttle(ms, pattern, saga, ..args)</code></a></p>
+<h3 id="debouncems-pattern-saga-args"><code>debounce(ms, pattern, saga, ...args)</code></h3>
+<p>Spawns a <code>saga</code> on an action dispatched to the Store that matches <code>pattern</code>. Saga will be called after it stops taking <code>pattern</code> actions for <code>ms</code> milliseconds. Purpose of this is to prevent calling saga until the actions are settled off.</p>
+<ul>
+<li><p><code>ms: Number</code> - defines how many milliseconds should elapse since the last time <code>pattern</code> action was fired to call the <code>saga</code></p></li>
+<li><p><code>pattern: String | Array | Function</code> - for more information see docs for <a href="#takepattern"><code>take(pattern)</code></a></p></li>
+<li><p><code>saga: Function</code> - a Generator function</p></li>
+<li><p><code>args: Array&lt;any&gt;</code> - arguments to be passed to the started task. <code>debounce</code> will add the<br />
+incoming action to the argument list (i.e. the action will be the last argument provided to <code>saga</code>)</p></li>
+</ul>
+<h4 id="example-9">Example</h4>
+<p>In the following example, we create a basic task <code>fetchAutocomplete</code>. We use <code>debounce</code> to<br />
+delay calling <code>fetchAutocomplete</code> saga until we stop receive any <code>FETCH_AUTOCOMPLETE</code> events for at least <code>1000</code> ms.</p>
+<pre><code class="javascript language-javascript"><span class="hljs-keyword">import</span> { call, put, debounce } <span class="hljs-keyword">from</span> <span class="hljs-string">`redux-saga/effects`</span>
+
+<span class="hljs-function"><span class="hljs-keyword">function</span>* <span class="hljs-title">fetchAutocomplete</span>(<span class="hljs-params">action</span>) </span>{
+  <span class="hljs-keyword">const</span> autocompleteProposals = <span class="hljs-keyword">yield</span> call(Api.fetchAutocomplete, action.text)
+  <span class="hljs-keyword">yield</span> put({<span class="hljs-attr">type</span>: <span class="hljs-string">'FETCHED_AUTOCOMPLETE_PROPOSALS'</span>, <span class="hljs-attr">proposals</span>: autocompleteProposals})
+}
+
+<span class="hljs-function"><span class="hljs-keyword">function</span>* <span class="hljs-title">debounceAutocomplete</span>(<span class="hljs-params"></span>) </span>{
+  <span class="hljs-keyword">yield</span> debounce(<span class="hljs-number">1000</span>, <span class="hljs-string">'FETCH_AUTOCOMPLETE'</span>, fetchAutocomplete)
+}</code></pre>
+<h4 id="notes-15">Notes</h4>
+<p><code>debounce</code> is a high-level API built using <code>take</code>, <code>delay</code> and <code>fork</code>. Here is how the helper could be implemented using the low-level Effects</p>
+<pre><code class="javascript language-javascript">const debounce = (<span class="hljs-name">ms</span>, pattern, task, ...args) =&gt; fork(<span class="hljs-name">function*</span>() {
+  while (<span class="hljs-name">true</span>) {
+    let action = yield take(<span class="hljs-name">pattern</span>)
+
+    while (<span class="hljs-name">true</span>) {
+      const { debounced, _action } = yield race({
+        debounced: delay(<span class="hljs-name">ms</span>),
+        _action: take(<span class="hljs-name">pattern</span>)
+      })
+
+      if (<span class="hljs-name">debounced</span>) {
+        yield fork(<span class="hljs-name">worker</span>, ...args, action)
+        break
+      }
+
+      action = _action
+    }
+  }
+})</code></pre>
+<h3 id="debouncems-channel-saga-args"><code>debounce(ms, channel, saga, ...args)</code></h3>
+<p>You can also handle a channel as argument and the behaviour is the same as <a href="#debouncems-pattern-saga-args"><code>debounce(ms, pattern, saga, ..args)</code></a></p>
+<h3 id="retrymaxtries-delay-fn-args"><code>retry(maxTries, delay, fn, ...args)</code></h3>
+<p>Creates an Effect description that instructs the middleware to call the function <code>fn</code> with <code>args</code> as arguments.<br />
+In case of failure will try to make another call after <code>delay</code> milliseconds, if a number of attempts &lt; <code>maxTries</code>.</p>
+<ul>
+<li><code>maxTries: Number</code> - maximum calls count.</li>
+<li><code>delay: Number</code> - length of a time window in milliseconds between <code>fn</code> calls.</li>
+<li><code>fn: Function</code> - A Generator function, or normal function which either returns a Promise as a result, or any other value.</li>
+<li><code>args: Array&lt;any&gt;</code> - An array of values to be passed as arguments to <code>fn</code></li>
+</ul>
+<h4 id="example-10">Example</h4>
+<p>In the following example, we create a basic task <code>retrySaga</code>. We use <code>retry</code> to try to fetch our API 3 times with 10 second interval. If <code>request</code> fails first time than <code>retry</code> will call <code>request</code> one more time while calls count less than 3.</p>
+<pre><code class="javascript language-javascript"><span class="hljs-keyword">import</span> { put, retry } <span class="hljs-keyword">from</span> <span class="hljs-string">'redux-saga/effects'</span>
+<span class="hljs-keyword">import</span> { request } <span class="hljs-keyword">from</span> <span class="hljs-string">'some-api'</span>;
+
+<span class="hljs-function"><span class="hljs-keyword">function</span>* <span class="hljs-title">retrySaga</span>(<span class="hljs-params">data</span>) </span>{
+  <span class="hljs-keyword">try</span> {
+    <span class="hljs-keyword">const</span> SECOND = <span class="hljs-number">1000</span>
+    <span class="hljs-keyword">const</span> response = <span class="hljs-keyword">yield</span> retry(<span class="hljs-number">3</span>, <span class="hljs-number">10</span> * SECOND, request, data)
+    <span class="hljs-keyword">yield</span> put({ <span class="hljs-keyword">type</span>: <span class="hljs-string">'REQUEST_SUCCESS'</span>, payload: response })
+  } <span class="hljs-keyword">catch</span>(error) {
+    <span class="hljs-keyword">yield</span> put({ <span class="hljs-keyword">type</span>: <span class="hljs-string">'REQUEST_FAIL'</span>, payload: { error } })
+  }
+}</code></pre>
+<h4 id="notes-16">Notes</h4>
+<p><code>retry</code> is a high-level API built using <code>delay</code> and <code>call</code>. <a href="/docs/recipes/#retrying-xhr-calls">Here is how the helper could be implemented using the low-level Effects</a></p>
+<h2 id="effect-combinators">Effect combinators</h2>
+<h3 id="raceeffects"><code>race(effects)</code></h3>
+<p>Creates an Effect description that instructs the middleware to run a <em>Race</em> between<br />
+multiple Effects (this is similar to how <a href="https://developer.mozilla.org/en/docs/Web/JavaScript/Reference/Global_Objects/Promise/race"><code>Promise.race([...])</code></a> behaves).</p>
+<p><code>effects: Object</code> - a dictionary Object of the form {label: effect, …}</p>
+<h4 id="example-11">Example</h4>
+<p>The following example runs a race between two effects:</p>
+<ol>
+<li>A call to a function <code>fetchUsers</code> which returns a Promise</li>
+<li>A <code>CANCEL_FETCH</code> action which may be eventually dispatched on the Store</li>
+</ol>
+<pre><code class="javascript language-javascript"><span class="hljs-keyword">import</span> { take, call, race } <span class="hljs-keyword">from</span> <span class="hljs-string">`redux-saga/effects`</span>
+<span class="hljs-keyword">import</span> fetchUsers <span class="hljs-keyword">from</span> <span class="hljs-string">'./path/to/fetchUsers'</span>
+
+<span class="hljs-function"><span class="hljs-keyword">function</span>* <span class="hljs-title">fetchUsersSaga</span>(<span class="hljs-params"></span>) </span>{
+  <span class="hljs-keyword">const</span> { response, cancel } = <span class="hljs-keyword">yield</span> race({
+    <span class="hljs-attr">response</span>: call(fetchUsers),
+    <span class="hljs-attr">cancel</span>: take(CANCEL_FETCH)
+  })
+}</code></pre>
+<p>If <code>call(fetchUsers)</code> resolves (or rejects) first, the result of <code>race</code> will be an object<br />
+with a single keyed object <code>{response: result}</code> where <code>result</code> is the resolved result of <code>fetchUsers</code>.</p>
+<p>If an action of type <code>CANCEL_FETCH</code> is dispatched on the Store before <code>fetchUsers</code> completes, the result<br />
+will be a single keyed object <code>{cancel: action}</code>, where action is the dispatched action.</p>
+<h4 id="notes-17">Notes</h4>
+<p>When resolving a <code>race</code>, the middleware automatically cancels all the losing Effects.</p>
+<h3 id="raceeffects-with-array"><code>race([...effects]) (with Array)</code></h3>
+<p>The same as <a href="#raceeffects"><code>race(effects)</code></a> but lets you pass in an array of effects.</p>
+<h4 id="example-12">Example</h4>
+<p>The following example runs a race between two effects:</p>
+<ol>
+<li>A call to a function <code>fetchUsers</code> which returns a Promise</li>
+<li>A <code>CANCEL_FETCH</code> action which may be eventually dispatched on the Store</li>
+</ol>
+<pre><code class="javascript language-javascript"><span class="hljs-keyword">import</span> { take, call, race } <span class="hljs-keyword">from</span> <span class="hljs-string">`redux-saga/effects`</span>
+<span class="hljs-keyword">import</span> fetchUsers <span class="hljs-keyword">from</span> <span class="hljs-string">'./path/to/fetchUsers'</span>
+
+<span class="hljs-function"><span class="hljs-keyword">function</span>* <span class="hljs-title">fetchUsersSaga</span>(<span class="hljs-params"></span>) </span>{
+  <span class="hljs-keyword">const</span> [response, cancel] = <span class="hljs-keyword">yield</span> race([
+    call(fetchUsers),
+    take(CANCEL_FETCH)
+  ])
+}</code></pre>
+<p>If <code>call(fetchUsers)</code> resolves (or rejects) first, <code>response</code> will be an result of <code>fetchUsers</code> and <code>cancel</code> will be <code>undefined</code>.</p>
+<p>If an action of type <code>CANCEL_FETCH</code> is dispatched on the Store before <code>fetchUsers</code> completes, <code>response</code> will be<br />
+<code>undefined</code> and <code>cancel</code> will be the dispatched action.</p>
+<h3 id="alleffects---parallel-effects"><code>all([...effects]) - parallel effects</code></h3>
+<p>Creates an Effect description that instructs the middleware to run multiple Effects<br />
+in parallel and wait for all of them to complete. It's quite the corresponding API to standard <a href="https://developer.mozilla.org/en/docs/Web/JavaScript/Reference/Global_Objects/Promise/all"><code>Promise#all</code></a>.</p>
+<h4 id="example-13">Example</h4>
+<p>The following example runs two blocking calls in parallel:</p>
+<pre><code class="javascript language-javascript"><span class="hljs-keyword">import</span> { fetchCustomers, fetchProducts } <span class="hljs-keyword">from</span> <span class="hljs-string">'./path/to/api'</span>
+<span class="hljs-keyword">import</span> { all, call } <span class="hljs-keyword">from</span> <span class="hljs-string">`redux-saga/effects`</span>
+
+<span class="hljs-function"><span class="hljs-keyword">function</span>* <span class="hljs-title">mySaga</span>(<span class="hljs-params"></span>) </span>{
+  <span class="hljs-keyword">const</span> [customers, products] = <span class="hljs-keyword">yield</span> all([
+    call(fetchCustomers),
+    call(fetchProducts)
+  ])
+}</code></pre>
+<h3 id="alleffects"><code>all(effects)</code></h3>
+<p>The same as <a href="#alleffects-parallel-effects"><code>all([...effects])</code></a> but lets you to pass in a dictionary object of effects with labels, just like <a href="#raceeffects"><code>race(effects)</code></a></p>
+<ul>
+<li><code>effects: Object</code> - a dictionary Object of the form {label: effect, …}</li>
+</ul>
+<h4 id="example-14">Example</h4>
+<p>The following example runs two blocking calls in parallel:</p>
+<pre><code class="javascript language-javascript"><span class="hljs-keyword">import</span> { fetchCustomers, fetchProducts } <span class="hljs-keyword">from</span> <span class="hljs-string">'./path/to/api'</span>
+<span class="hljs-keyword">import</span> { all, call } <span class="hljs-keyword">from</span> <span class="hljs-string">`redux-saga/effects`</span>
+
+<span class="hljs-function"><span class="hljs-keyword">function</span>* <span class="hljs-title">mySaga</span>(<span class="hljs-params"></span>) </span>{
+  <span class="hljs-keyword">const</span> { customers, products } = <span class="hljs-keyword">yield</span> all({
+    <span class="hljs-attr">customers</span>: call(fetchCustomers),
+    <span class="hljs-attr">products</span>: call(fetchProducts)
+  })
+}</code></pre>
+<h4 id="notes-18">Notes</h4>
+<p>When running Effects in parallel, the middleware suspends the Generator until one of the following occurs:</p>
+<ul>
+<li><p>All the Effects completed with success: resumes the Generator with an array containing the results of all Effects.</p></li>
+<li><p>One of the Effects was rejected before all the effects complete: throws the rejection error inside the Generator.</p></li>
+</ul>
+<h2 id="interfaces">Interfaces</h2>
+<h3 id="task">Task</h3>
+<p>The Task interface specifies the result of running a Saga using <code>fork</code>, <code>middleware.run</code> or <code>runSaga</code>.</p>
+<table id="task-descriptor">
+  <tr>
+    <th>method</th>
+    <th>return value</th>
+  </tr>
+  <tr>
+    <td>task.isRunning()</td>
+    <td>true if the task hasn't yet returned or thrown an error</td>
+  </tr>
+  <tr>
+    <td>task.isCancelled()</td>
+    <td>true if the task has been cancelled</td>
+  </tr>
+  <tr>
+    <td>task.result()</td>
+    <td>task return value. `undefined` if task is still running</td>
+  </tr>
+  <tr>
+    <td>task.error()</td>
+    <td>task thrown error. `undefined` if task is still running</td>
+  </tr>
+  <tr>
+    <td>task.toPromise()</td>
+    <td>
+      a Promise which is either:
+        <ul>
+          <li>resolved with task's return value</li>
+          <li>rejected with task's thrown error</li>
+        </ul>
+      </td>
+  </tr>
+  <tr>
+    <td>task.cancel()</td>
+    <td>Cancels the task (If it is still running)</td>
+  </tr>
+</table>
+<h3 id="channel">Channel</h3>
+<p>A channel is an object used to send and receive messages between tasks. Messages from senders are queued until an interested receiver request a message, and registered receiver is queued until a message is available.</p>
+<p>Every channel has an underlying buffer which defines the buffering strategy (fixed size, dropping, sliding)</p>
+<p>The Channel interface defines 3 methods: <code>take</code>, <code>put</code> and <code>close</code></p>
+<p><code>Channel.take(callback):</code> used to register a taker. The take is resolved using the following rules</p>
+<ul>
+<li>If the channel has buffered messages, then <code>callback</code> will be invoked with the next message from the underlying buffer (using <code>buffer.take()</code>)</li>
+<li>If the channel is closed and there are no buffered messages, then <code>callback</code> is invoked with <code>END</code></li>
+<li>Otherwise<code>callback</code> will be queued until a message is put into the channel</li>
+</ul>
+<p><code>Channel.put(message):</code> Used to put message on the buffer. The put will be handled using the following rules</p>
+<ul>
+<li>If the channel is closed, then the put will have no effect.</li>
+<li>If there are pending takers, then invoke the oldest taker with the message.</li>
+<li>Otherwise put the message on the underlying buffer</li>
+</ul>
+<p><code>Channel.flush(callback):</code> Used to extract all buffered messages from the channel. The flush is resolved using the following rules</p>
+<ul>
+<li>If the channel is closed and there are no buffered messages, then <code>callback</code> is invoked with <code>END</code></li>
+<li>Otherwise <code>callback</code> is invoked with all buffered messages.</li>
+</ul>
+<p><code>Channel.close():</code> closes the channel which means no more puts will be allowed. All pending takers will be invoked with <code>END</code>.</p>
+<h3 id="buffer">Buffer</h3>
+<p>Used to implement the buffering strategy for a channel. The Buffer interface defines 3 methods: <code>isEmpty</code>, <code>put</code> and <code>take</code></p>
+<ul>
+<li><code>isEmpty()</code>: returns true if there are no messages on the buffer. A channel calls this method whenever a new taker is registered</li>
+<li><code>put(message)</code>: used to put new message in the buffer. Note the Buffer can choose to not store the message<br />
+(e.g. a dropping buffer can drop any new message exceeding a given limit)</li>
+<li><code>take()</code> used to retrieve any buffered message. Note the behavior of this method has to be consistent with <code>isEmpty</code></li>
+</ul>
+<h3 id="sagamonitor">SagaMonitor</h3>
+<p>Used by the middleware to dispatch monitoring events. Actually the middleware dispatches 6 events:</p>
+<ul>
+<li><p>When a root saga is started (via <code>runSaga</code> or <code>sagaMiddleware.run</code>) the middleware invokes <code>sagaMonitor.rootSagaStarted</code></p></li>
+<li><p>When an effect is triggered (via <code>yield someEffect</code>) the middleware invokes <code>sagaMonitor.effectTriggered</code></p></li>
+<li><p>If the effect is resolved with success the middleware invokes <code>sagaMonitor.effectResolved</code></p></li>
+<li><p>If the effect is rejected with an error the middleware invokes <code>sagaMonitor.effectRejected</code></p></li>
+<li><p>If the effect is cancelled the middleware invokes <code>sagaMonitor.effectCancelled</code></p></li>
+<li><p>Finally, the middleware invokes <code>sagaMonitor.actionDispatched</code> when a Redux action is dispatched.</p></li>
+</ul>
+<p>Below the signature for each method</p>
+<ul>
+<li><p><code>sagaMonitor.rootSagaStarted(options)</code> : where options is an object with the following fields</p>
+<ul>
+<li><p><code>effectId</code> : Number - Unique ID assigned to this root saga execution</p></li>
+<li><p><code>saga</code> : Function - The generator function that starts to run</p></li>
+<li><p><code>args</code> : Array - The arguments passed to the generator function</p></li></ul></li>
+<li><p><code>effectTriggered(options)</code></p>
+<ul>
+<li><p><code>effectId</code> : Number - Unique ID assigned to the yielded effect</p></li>
+<li><p><code>parentEffectId</code> : Number - ID of the parent Effect. In the case of a <code>race</code> or <code>parallel</code> effect, all<br />
+effects yielded inside will have the direct race/parallel effect as a parent. In case of a top-level effect, the<br />
+parent will be the containing Saga</p></li>
+<li><p><code>label</code> : String - In case of a <code>race</code>/<code>all</code> effect, all child effects will be assigned as label the corresponding<br />
+keys of the object passed to <code>race</code>/<code>all</code></p></li>
+<li><p><code>effect</code> : Object - the yielded effect itself</p></li></ul></li>
+<li><p><code>effectResolved(effectId, result)</code></p>
+<ul>
+<li><p><code>effectId</code> : Number - The ID of the yielded effect</p></li>
+<li><p><code>result</code> : any - The result of the successful resolution of the effect. In case of <code>fork</code> or <code>spawn</code> effects,<br />
+the result will be a <code>Task</code> object.</p></li></ul></li>
+<li><p><code>effectRejected(effectId, error)</code></p>
+<ul>
+<li><p><code>effectId</code> : Number - The ID of the yielded effect</p></li>
+<li><p><code>error</code> : any - Error raised with the rejection of the effect</p></li></ul></li>
+<li><p><code>effectCancelled(effectId)</code></p>
+<ul>
+<li><code>effectId</code> : Number - The ID of the yielded effect</li></ul></li>
+<li><p><code>actionDispatched(action)</code></p>
+<ul>
+<li><code>action</code> : Object - The dispatched Redux action. If the action was dispatched by a Saga<br />
+then the action will have a property <code>SAGA_ACTION</code> set to true (<code>SAGA_ACTION</code> can be imported from<br />
+<code>@redux-saga/symbols</code>).</li></ul></li>
+</ul>
+<h2 id="-external-api">## External API</h2>
+<h3 id="runsagaoptions-saga-args"><code>runSaga(options, saga, ...args)</code></h3>
+<p>Allows starting sagas outside the Redux middleware environment. Useful if you want to<br />
+connect a Saga to external input/output, other than store actions.</p>
+<p><code>runSaga</code> returns a Task object. Just like the one returned from a <code>fork</code> effect.</p>
+<ul>
+<li><p><code>options: Object</code> - currently supported options are:</p>
+<ul>
+<li><p><code>channel</code> - see docs for <a href="#channel"><code>channel</code></a> (preferably you should use <code>stdChannel</code> here)</p></li>
+<li><p><code>dispatch(output): Function</code> - used to fulfill <code>put</code> effects.</p></li>
+<li><p><code>output: any</code> -  argument provided by the Saga to the <code>put</code> Effect (see Notes below).</p></li>
+<li><p><code>getState(): Function</code> - used to fulfill <code>select</code> and <code>getState</code> effects</p></li>
+<li><p><code>sagaMonitor</code> : <a href="#sagamonitor">SagaMonitor</a> - see docs for <a href="#createsagamiddlewareoptions"><code>createSagaMiddleware(options)</code></a></p></li>
+<li><p><code>onError: Function</code> - see docs for <a href="#createsagamiddlewareoptions"><code>createSagaMiddleware(options)</code></a></p></li>
+<li><p><code>context</code> : {} - see docs for <a href="#createsagamiddlewareoptions"><code>createSagaMiddleware(options)</code></a></p></li>
+<li><p><code>effectMiddlewares</code> : Function[] - see docs for <a href="#createsagamiddlewareoptions"><code>createSagaMiddleware(options)</code></a></p></li></ul></li>
+<li><p><code>saga: Function</code> - a Generator function</p></li>
+<li><p><code>args: Array&lt;any&gt;</code> - arguments to be provided to <code>saga</code></p></li>
+</ul>
+<h4 id="notes-19">Notes</h4>
+<p>The <code>{channel, dispatch}</code> is used to fulfill <code>take</code> and <code>put</code> Effects. This defines the Input/Output<br />
+interface of the Saga.</p>
+<p><code>channel</code> is used to fulfill <code>take(PATTERN)</code> effects. Every time something gets put on the channel it's<br />
+notifying all pending internal listeners. If the Saga is blocked on a <code>take</code> effect, and<br />
+if the take pattern matches the currently incoming input, the Saga is resumed with that input.</p>
+<p><code>dispatch</code> is used to fulfill <code>put</code> effects. Each time the Saga emits a <code>yield put(output)</code>, <code>dispatch</code><br />
+is invoked with output.</p>
+<p>An example how to use this API may be found <a href="../advanced/UsingRunSaga.md">here</a>.</p>
+<h2 id="utils">Utils</h2>
+<h3 id="channelbuffer"><code>channel([buffer])</code></h3>
+<p>A factory method that can be used to create Channels. You can optionally pass it a buffer<br />
+to control how the channel buffers the messages.</p>
+<p>By default, if no buffer is provided, the channel will queue incoming messages up to 10 until interested takers are registered. The default buffering will deliver message using a FIFO strategy: a new taker will be delivered the oldest message in the buffer.</p>
+<h3 id="eventchannelsubscribe-buffer"><code>eventChannel(subscribe, [buffer])</code></h3>
+<p>Creates channel that will subscribe to an event source using the <code>subscribe</code> method. Incoming events from the event source will be queued in the channel until interested takers are registered.</p>
+<ul>
+<li><p><code>subscribe: Function</code> used to subscribe to the underlying event source. The function must return an unsubscribe function to terminate the subscription.</p></li>
+<li><p><code>buffer: Buffer</code> optional Buffer object to buffer messages on this channel. If not provided, messages will not be buffered<br />
+on this channel.</p></li>
+</ul>
+<p>To notify the channel that the event source has terminated, you can notify the provided subscriber with an <code>END</code></p>
+<h4 id="example-15">Example</h4>
+<p>In the following example we create an event channel that will subscribe to a <code>setInterval</code></p>
+<pre><code class="javascript language-javascript"><span class="hljs-keyword">const</span> countdown = <span class="hljs-function">(<span class="hljs-params">secs</span>) =&gt;</span> {
+  <span class="hljs-keyword">return</span> eventChannel(<span class="hljs-function"><span class="hljs-params">emitter</span> =&gt;</span> {
+      <span class="hljs-keyword">const</span> iv = setInterval(<span class="hljs-function"><span class="hljs-params">()</span> =&gt;</span> {
+        <span class="hljs-built_in">console</span>.log(<span class="hljs-string">'countdown'</span>, secs)
+        secs -= <span class="hljs-number">1</span>
+        <span class="hljs-keyword">if</span> (secs &gt; <span class="hljs-number">0</span>) {
+          emitter(secs)
+        } <span class="hljs-keyword">else</span> {
+          emitter(END)
+          clearInterval(iv)
+          <span class="hljs-built_in">console</span>.log(<span class="hljs-string">'countdown terminated'</span>)
+        }
+      }, <span class="hljs-number">1000</span>);
+      <span class="hljs-keyword">return</span> <span class="hljs-function"><span class="hljs-params">()</span> =&gt;</span> {
+        clearInterval(iv)
+        <span class="hljs-built_in">console</span>.log(<span class="hljs-string">'countdown cancelled'</span>)
+      }
+    }
+  )
+}</code></pre>
+<h3 id="buffers"><code>buffers</code></h3>
+<p>Provides some common buffers</p>
+<ul>
+<li><p><code>buffers.none()</code>: no buffering, new messages will be lost if there are no pending takers</p></li>
+<li><p><code>buffers.fixed(limit)</code>: new messages will be buffered up to <code>limit</code>. Overflow will raise an Error. Omitting a <code>limit</code> value will result in a limit of 10.</p></li>
+<li><p><code>buffers.expanding(initialSize)</code>: like <code>fixed</code> but Overflow will cause the buffer to expand dynamically.</p></li>
+<li><p><code>buffers.dropping(limit)</code>: same as <code>fixed</code> but Overflow will silently drop the messages.</p></li>
+<li><p><code>buffers.sliding(limit)</code>: same as <code>fixed</code> but Overflow will insert the new message at the end and drop the oldest message in the buffer.</p></li>
+</ul>
+<h3 id="cloneablegeneratorgeneratorfunc"><code>cloneableGenerator(generatorFunc)</code></h3>
+<p>Takes a generator function (function*) and returns a generator function.<br />
+All generators instanciated from this function will be cloneable.<br />
+For testing purpose only.</p>
+<h4 id="example-16">Example</h4>
+<p>This is useful when you want to test a different branch of a saga without having to replay the actions that lead to it.</p>
+<pre><code class="javascript language-javascript">import { cloneableGenerator } from <span class="hljs-string">'@redux-saga/testing-utils'</span>;
+
+<span class="hljs-function"><span class="hljs-keyword">function</span>* <span class="hljs-title">oddOrEven</span><span class="hljs-params">()</span></span> {
+  // some stuff are done here
+  <span class="hljs-built_in">yield</span> <span class="hljs-number">1</span>;
+  <span class="hljs-built_in">yield</span> <span class="hljs-number">2</span>;
+  <span class="hljs-built_in">yield</span> <span class="hljs-number">3</span>;
+
+  const userInput = <span class="hljs-built_in">yield</span> <span class="hljs-string">'enter a number'</span>;
+  <span class="hljs-keyword">if</span> (userInput % <span class="hljs-number">2</span> === <span class="hljs-number">0</span>) {
+    <span class="hljs-built_in">yield</span> <span class="hljs-string">'even'</span>;
+  } <span class="hljs-keyword">else</span> {
+    <span class="hljs-built_in">yield</span> <span class="hljs-string">'odd'</span>
+  }
+}
+
+test(<span class="hljs-string">'my oddOrEven saga'</span>, <span class="hljs-built_in">assert</span> =&gt; {
+  const data = {};
+  data.gen = cloneableGenerator(oddOrEven)();
+
+  <span class="hljs-built_in">assert</span>.equal(
+    data.gen.<span class="hljs-built_in">next</span>().value,
+    <span class="hljs-number">1</span>,
+    <span class="hljs-string">'it should yield 1'</span>
+  );
+
+  <span class="hljs-built_in">assert</span>.equal(
+    data.gen.<span class="hljs-built_in">next</span>().value,
+    <span class="hljs-number">2</span>,
+    <span class="hljs-string">'it should yield 2'</span>
+  );
+
+  <span class="hljs-built_in">assert</span>.equal(
+    data.gen.<span class="hljs-built_in">next</span>().value,
+    <span class="hljs-number">3</span>,
+    <span class="hljs-string">'it should yield 3'</span>
+  );
+
+  <span class="hljs-built_in">assert</span>.equal(
+    data.gen.<span class="hljs-built_in">next</span>().value,
+    <span class="hljs-string">'enter a number'</span>,
+    <span class="hljs-string">'it should ask for a number'</span>
+  );
+
+  <span class="hljs-built_in">assert</span>.test(<span class="hljs-string">'even number is given'</span>, a =&gt; {
+    // we make a clone of the generator before giving the number;
+    data.clone = data.gen.clone();
+
+    a.equal(
+      data.gen.<span class="hljs-built_in">next</span>(<span class="hljs-number">2</span>).value,
+      <span class="hljs-string">'even'</span>,
+      <span class="hljs-string">'it should yield "even"'</span>
+    );
+
+    a.equal(
+      data.gen.<span class="hljs-built_in">next</span>().done,
+      <span class="hljs-literal">true</span>,
+      <span class="hljs-string">'it should be done'</span>
+    );
+
+    a.<span class="hljs-keyword">end</span>();
+  });
+
+  <span class="hljs-built_in">assert</span>.test(<span class="hljs-string">'odd number is given'</span>, a =&gt; {
+
+    a.equal(
+      data.clone.<span class="hljs-built_in">next</span>(<span class="hljs-number">1</span>).value,
+      <span class="hljs-string">'odd'</span>,
+      <span class="hljs-string">'it should yield "odd"'</span>
+    );
+
+    a.equal(
+      data.clone.<span class="hljs-built_in">next</span>().done,
+      <span class="hljs-literal">true</span>,
+      <span class="hljs-string">'it should be done'</span>
+    );
+
+    a.<span class="hljs-keyword">end</span>();
+  });
+
+  <span class="hljs-built_in">assert</span>.<span class="hljs-keyword">end</span>();
+});</code></pre>
+<h3 id="createmocktask"><code>createMockTask()</code></h3>
+<p>Returns an object that mocks a task.<br />
+For testing purposes only.<br />
+<a href="/docs/advanced/TaskCancellation.md#testing-generators-with-fork-effect">See Task Cancellation docs for more information.</a><br />
+)</p>
+<h2 id="cheatsheets-1">Cheatsheets</h2>
+<h3 id="blocking--non-blocking">Blocking / Non-blocking</h3>
+<table>
+<thead>
+<tr>
+<th id="name">Name</th>
+<th id="blocking">Blocking</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>takeEvery</td>
+<td>No</td>
+</tr>
+<tr>
+<td>takeLatest</td>
+<td>No</td>
+</tr>
+<tr>
+<td>takeLeading</td>
+<td>No</td>
+</tr>
+<tr>
+<td>throttle</td>
+<td>No</td>
+</tr>
+<tr>
+<td>debounce</td>
+<td>No</td>
+</tr>
+<tr>
+<td>retry</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>take</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>take(channel)</td>
+<td>Sometimes (see API reference)</td>
+</tr>
+<tr>
+<td>takeMaybe</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>put</td>
+<td>No</td>
+</tr>
+<tr>
+<td>putResolve</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>put(channel, action)</td>
+<td>No</td>
+</tr>
+<tr>
+<td>call</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>apply</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>cps</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>fork</td>
+<td>No</td>
+</tr>
+<tr>
+<td>spawn</td>
+<td>No</td>
+</tr>
+<tr>
+<td>join</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>cancel</td>
+<td>No</td>
+</tr>
+<tr>
+<td>select</td>
+<td>No</td>
+</tr>
+<tr>
+<td>actionChannel</td>
+<td>No</td>
+</tr>
+<tr>
+<td>flush</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>cancelled</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>race</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>delay</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>all</td>
+<td>Blocks if there is a blocking effect in the array or object</td>
+</tr>
+</tbody>
+</table>
+	</div>
+</body>
+</html>

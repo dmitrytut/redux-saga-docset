@@ -1,0 +1,29 @@
+
+<!DOCTYPE HTML>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+		<meta name=viewport content='width=device-width,user-scalable=no,minimum-scale=1.0,maximum-scale=1.0' />
+		<link media="all" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/github-markdown-css/2.9.0/github-markdown.min.css" type="text/css" />
+		<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/github.min.css" type="text/css" media="all" />
+    <title></title>
+</head>
+<body>
+	<div class="markdown-body">
+		<h1 id="running-tasks-in-parallel">Running Tasks In Parallel</h1>
+<p>The <code>yield</code> statement is great for representing asynchronous control flow in a linear style, but we also need to do things in parallel. We can't write:</p>
+<pre><code class="javascript language-javascript"><span class="hljs-comment">// wrong, effects will be executed in sequence</span>
+<span class="hljs-keyword">const</span> users = <span class="hljs-function"><span class="hljs-keyword">yield</span> <span class="hljs-title">call</span>(<span class="hljs-params">fetch, <span class="hljs-string">'/users'</span></span>)
+<span class="hljs-keyword">const</span> repos</span> = <span class="hljs-function"><span class="hljs-keyword">yield</span> <span class="hljs-title">call</span>(<span class="hljs-params">fetch, <span class="hljs-string">'/repos'</span></span>)</span></code></pre>
+<p>Because the 2nd effect will not get executed until the first call resolves. Instead we have to write:</p>
+<pre><code class="javascript language-javascript"><span class="hljs-keyword">import</span> { <span class="hljs-keyword">all</span>, <span class="hljs-keyword">call</span> } <span class="hljs-keyword">from</span> <span class="hljs-string">'redux-saga/effects'</span>
+
+// correct, effects will <span class="hljs-keyword">get</span> executed <span class="hljs-keyword">in</span> parallel
+const [users, repos] = yield <span class="hljs-keyword">all</span>([
+  <span class="hljs-keyword">call</span>(<span class="hljs-keyword">fetch</span>, <span class="hljs-string">'/users'</span>),
+  <span class="hljs-keyword">call</span>(<span class="hljs-keyword">fetch</span>, <span class="hljs-string">'/repos'</span>)
+])</code></pre>
+<p>When we yield an array of effects, the generator is blocked until all the effects are resolved or as soon as one is rejected (just like how <code>Promise.all</code> behaves).</p>
+	</div>
+</body>
+</html>

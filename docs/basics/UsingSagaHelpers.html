@@ -1,0 +1,60 @@
+
+<!DOCTYPE HTML>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+		<meta name=viewport content='width=device-width,user-scalable=no,minimum-scale=1.0,maximum-scale=1.0' />
+		<link media="all" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/github-markdown-css/2.9.0/github-markdown.min.css" type="text/css" />
+		<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/github.min.css" type="text/css" media="all" />
+    <title></title>
+</head>
+<body>
+	<div class="markdown-body">
+		<h1 id="using-saga-helpers">Using Saga Helpers</h1>
+<p><code>redux-saga</code> provides some helper effects wrapping internal functions to spawn tasks when some specific actions are dispatched to the Store.</p>
+<p>The helper functions are built on top of the lower level API. In the advanced section, we'll see how those functions can be implemented.</p>
+<p>The first function, <code>takeEvery</code> is the most familiar and provides a behavior similar to <code>redux-thunk</code>.</p>
+<p>Let's illustrate with the common AJAX example. On each click on a Fetch button we dispatch a <code>FETCH_REQUESTED</code> action. We want to handle this action by launching a task that will fetch some data from the server.</p>
+<p>First we create the task that will perform the asynchronous action:</p>
+<pre><code class="javascript language-javascript"><span class="hljs-keyword">import</span> { call, put } <span class="hljs-keyword">from</span> <span class="hljs-string">'redux-saga/effects'</span>
+
+<span class="hljs-keyword">export</span> <span class="hljs-function"><span class="hljs-keyword">function</span>* <span class="hljs-title">fetchData</span>(<span class="hljs-params">action</span>) </span>{
+   <span class="hljs-keyword">try</span> {
+      <span class="hljs-keyword">const</span> data = <span class="hljs-keyword">yield</span> call(Api.fetchUser, action.payload.url)
+      <span class="hljs-keyword">yield</span> put({<span class="hljs-keyword">type</span>: <span class="hljs-string">"FETCH_SUCCEEDED"</span>, data})
+   } <span class="hljs-keyword">catch</span> (error) {
+      <span class="hljs-keyword">yield</span> put({<span class="hljs-keyword">type</span>: <span class="hljs-string">"FETCH_FAILED"</span>, error})
+   }
+}</code></pre>
+<p>To launch the above task on each <code>FETCH_REQUESTED</code> action:</p>
+<pre><code class="javascript language-javascript"><span class="hljs-keyword">import</span> { takeEvery } <span class="hljs-keyword">from</span> <span class="hljs-string">'redux-saga/effects'</span>
+
+<span class="hljs-function"><span class="hljs-keyword">function</span>* <span class="hljs-title">watchFetchData</span>(<span class="hljs-params"></span>) </span>{
+  <span class="hljs-keyword">yield</span> takeEvery(<span class="hljs-string">'FETCH_REQUESTED'</span>, fetchData)
+}</code></pre>
+<p>In the above example, <code>takeEvery</code> allows multiple <code>fetchData</code> instances to be started concurrently. At a given moment, we can start a new <code>fetchData</code> task while there are still one or more previous <code>fetchData</code> tasks which have not yet terminated.</p>
+<p>If we want to only get the response of the latest request fired (e.g. to always display the latest version of data) we can use the <code>takeLatest</code> helper:</p>
+<pre><code class="javascript language-javascript"><span class="hljs-keyword">import</span> { takeLatest } <span class="hljs-keyword">from</span> <span class="hljs-string">'redux-saga/effects'</span>
+
+<span class="hljs-function"><span class="hljs-keyword">function</span>* <span class="hljs-title">watchFetchData</span>(<span class="hljs-params"></span>) </span>{
+  <span class="hljs-keyword">yield</span> takeLatest(<span class="hljs-string">'FETCH_REQUESTED'</span>, fetchData)
+}</code></pre>
+<p>Unlike <code>takeEvery</code>, <code>takeLatest</code> allows only one <code>fetchData</code> task to run at any moment. And it will be the latest started task. If a previous task is still running when another <code>fetchData</code> task is started, the previous task will be automatically cancelled.</p>
+<p>If you have multiple Sagas watching for different actions, you can create multiple watchers with those built-in helpers, which will behave like there was <code>fork</code> used to spawn them (we'll talk about <code>fork</code> later. For now, consider it to be an Effect that allows us to start multiple sagas in the background).</p>
+<p>For example:</p>
+<pre><code class="javascript language-javascript"><span class="hljs-keyword">import</span> { takeEvery } <span class="hljs-keyword">from</span> <span class="hljs-string">'redux-saga/effects'</span>
+
+<span class="hljs-comment">// FETCH_USERS</span>
+<span class="hljs-function"><span class="hljs-keyword">function</span>* <span class="hljs-title">fetchUsers</span>(<span class="hljs-params">action</span>) </span>{ ... }
+
+<span class="hljs-comment">// CREATE_USER</span>
+<span class="hljs-function"><span class="hljs-keyword">function</span>* <span class="hljs-title">createUser</span>(<span class="hljs-params">action</span>) </span>{ ... }
+
+<span class="hljs-comment">// use them in parallel</span>
+<span class="hljs-keyword">export</span> <span class="hljs-keyword">default</span> <span class="hljs-function"><span class="hljs-keyword">function</span>* <span class="hljs-title">rootSaga</span>(<span class="hljs-params"></span>) </span>{
+  <span class="hljs-keyword">yield</span> takeEvery(<span class="hljs-string">'FETCH_USERS'</span>, fetchUsers)
+  <span class="hljs-keyword">yield</span> takeEvery(<span class="hljs-string">'CREATE_USER'</span>, createUser)
+}</code></pre>
+	</div>
+</body>
+</html>

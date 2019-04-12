@@ -1,0 +1,136 @@
+
+<!DOCTYPE HTML>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+		<meta name=viewport content='width=device-width,user-scalable=no,minimum-scale=1.0,maximum-scale=1.0' />
+		<link media="all" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/github-markdown-css/2.9.0/github-markdown.min.css" type="text/css" />
+		<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/github.min.css" type="text/css" media="all" />
+    <title></title>
+</head>
+<body>
+	<div class="markdown-body">
+		<h1 id="redux-sagas-fork-model">redux-saga's fork model</h1>
+<p>In <code>redux-saga</code> you can dynamically fork tasks that execute in the background using 2 Effects</p>
+<ul>
+<li><code>fork</code> is used to create <em>attached forks</em></li>
+<li><code>spawn</code> is used to create <em>detached forks</em></li>
+</ul>
+<h2 id="attached-forks-using-fork">Attached forks (using <code>fork</code>)</h2>
+<p>Attached forks remain attached to their parent by the following rules</p>
+<h3 id="completion">Completion</h3>
+<ul>
+<li>A Saga terminates only after<ul>
+<li>It terminates its own body of instructions</li>
+<li>All attached forks are themselves terminated</li></ul></li>
+</ul>
+<p>For example say we have the following</p>
+<pre><code class="js language-js"><span class="hljs-keyword">import</span> { fork, call, put, delay } <span class="hljs-keyword">from</span> <span class="hljs-string">'redux-saga/effects'</span>
+<span class="hljs-keyword">import</span> api <span class="hljs-keyword">from</span> <span class="hljs-string">'./somewhere/api'</span> <span class="hljs-comment">// app specific</span>
+<span class="hljs-keyword">import</span> { receiveData } <span class="hljs-keyword">from</span> <span class="hljs-string">'./somewhere/actions'</span> <span class="hljs-comment">// app specific</span>
+
+<span class="hljs-function"><span class="hljs-keyword">function</span>* <span class="hljs-title">fetchAll</span>(<span class="hljs-params"></span>) </span>{
+  <span class="hljs-keyword">const</span> task1 = <span class="hljs-keyword">yield</span> fork(fetchResource, <span class="hljs-string">'users'</span>)
+  <span class="hljs-keyword">const</span> task2 = <span class="hljs-keyword">yield</span> fork(fetchResource, <span class="hljs-string">'comments'</span>)
+  <span class="hljs-keyword">yield</span> delay(<span class="hljs-number">1000</span>)
+}
+
+<span class="hljs-function"><span class="hljs-keyword">function</span>* <span class="hljs-title">fetchResource</span>(<span class="hljs-params">resource</span>) </span>{
+  <span class="hljs-keyword">const</span> {data} = <span class="hljs-keyword">yield</span> call(api.fetch, resource)
+  <span class="hljs-keyword">yield</span> put(receiveData(data))
+}
+
+<span class="hljs-function"><span class="hljs-keyword">function</span>* <span class="hljs-title">main</span>(<span class="hljs-params"></span>) </span>{
+  <span class="hljs-keyword">yield</span> call(fetchAll)
+}</code></pre>
+<p><code>call(fetchAll)</code> will terminate after:</p>
+<ul>
+<li><p>The <code>fetchAll</code> body itself terminates, this means all 3 effects are performed. Since <code>fork</code> effects are non blocking, the<br />
+task will block on <code>delay(1000)</code></p></li>
+<li><p>The 2 forked tasks terminate, i.e. after fetching the required resources and putting the corresponding <code>receiveData</code> actions</p></li>
+</ul>
+<p>So the whole task will block until a delay of 1000 millisecond passed <em>and</em> both <code>task1</code> and <code>task2</code> finished their business.</p>
+<p>Say for example, the delay of 1000 milliseconds elapsed and the 2 tasks haven't yet finished, then <code>fetchAll</code> will still wait<br />
+for all forked tasks to finish before terminating the whole task.</p>
+<p>The attentive reader might have noticed the <code>fetchAll</code> saga could be rewritten using the parallel Effect</p>
+<pre><code class="js language-js"><span class="hljs-function"><span class="hljs-keyword">function</span>* <span class="hljs-title">fetchAll</span>(<span class="hljs-params"></span>) </span>{
+  <span class="hljs-keyword">yield</span> all([
+    call(fetchResource, <span class="hljs-string">'users'</span>),     <span class="hljs-comment">// task1</span>
+    call(fetchResource, <span class="hljs-string">'comments'</span>),  <span class="hljs-comment">// task2,</span>
+    delay(<span class="hljs-number">1000</span>)
+  ])
+}</code></pre>
+<p>In fact, attached forks shares the same semantics with the parallel Effect:</p>
+<ul>
+<li>We're executing tasks in parallel</li>
+<li>The parent will terminate after all launched tasks terminate</li>
+</ul>
+<p>And this applies for all other semantics as well (error and cancellation propagation). You can understand how<br />
+attached forks behave by considering it as a <em>dynamic parallel</em> Effect.</p>
+<h2 id="error-propagation">Error propagation</h2>
+<p>Following the same analogy, Let's examine in detail how errors are handled in parallel Effects</p>
+<p>for example, let's say we have this Effect</p>
+<pre><code class="js language-js">yield all([
+  call(<span class="hljs-name">fetchResource</span>, 'users'),
+  call(<span class="hljs-name">fetchResource</span>, 'comments'),
+  delay(<span class="hljs-number">1000</span>)
+])</code></pre>
+<p>The above effect will fail as soon as any one of the 3 child Effects fails. Furthermore, the uncaught error will cause<br />
+the parallel Effect to cancel all the other pending Effects. So for example if <code>call(fetchResource, 'users')</code> raises an<br />
+uncaught error, the parallel Effect will cancel the 2 other tasks (if they are still pending) then aborts itself with the<br />
+same error from the failed call.</p>
+<p>Similarly for attached forks, a Saga aborts as soon as</p>
+<ul>
+<li><p>Its main body of instructions throws an error</p></li>
+<li><p>An uncaught error was raised by one of its attached forks</p></li>
+</ul>
+<p>So in the previous example</p>
+<pre><code class="js language-js"><span class="hljs-comment">//... imports</span>
+
+<span class="hljs-function"><span class="hljs-keyword">function</span>* <span class="hljs-title">fetchAll</span>(<span class="hljs-params"></span>) </span>{
+  <span class="hljs-keyword">const</span> task1 = <span class="hljs-keyword">yield</span> fork(fetchResource, <span class="hljs-string">'users'</span>)
+  <span class="hljs-keyword">const</span> task2 = <span class="hljs-keyword">yield</span> fork(fetchResource, <span class="hljs-string">'comments'</span>)
+  <span class="hljs-keyword">yield</span> delay(<span class="hljs-number">1000</span>)
+}
+
+<span class="hljs-function"><span class="hljs-keyword">function</span>* <span class="hljs-title">fetchResource</span>(<span class="hljs-params">resource</span>) </span>{
+  <span class="hljs-keyword">const</span> {data} = <span class="hljs-keyword">yield</span> call(api.fetch, resource)
+  <span class="hljs-keyword">yield</span> put(receiveData(data))
+}
+
+<span class="hljs-function"><span class="hljs-keyword">function</span>* <span class="hljs-title">main</span>(<span class="hljs-params"></span>) </span>{
+  <span class="hljs-keyword">try</span> {
+    <span class="hljs-keyword">yield</span> call(fetchAll)
+  } <span class="hljs-keyword">catch</span> (e) {
+    <span class="hljs-comment">// handle fetchAll errors</span>
+  }
+}</code></pre>
+<p>If at a moment, for example, <code>fetchAll</code> is blocked on the <code>delay(1000)</code> Effect, and say, <code>task1</code> failed, then the whole<br />
+<code>fetchAll</code> task will fail causing</p>
+<ul>
+<li><p>Cancellation of all other pending tasks. This includes:</p>
+<ul>
+<li>The <em>main task</em> (the body of <code>fetchAll</code>): cancelling it means cancelling the current Effect <code>delay(1000)</code></li>
+<li>The other forked tasks which are still pending. i.e. <code>task2</code> in our example.</li></ul></li>
+<li><p>The <code>call(fetchAll)</code> will raise itself an error which will be caught in the <code>catch</code> body of <code>main</code></p></li>
+</ul>
+<p>Note we're able to catch the error from <code>call(fetchAll)</code> inside <code>main</code> only because we're using a blocking call. And that<br />
+we can't catch the error directly from <code>fetchAll</code>. This is a rule of thumb, <strong>you can't catch errors from forked tasks</strong>. A failure<br />
+in an attached fork will cause the forking parent to abort (Just like there is no way to catch an error <em>inside</em> a parallel Effect, only from<br />
+outside by blocking on the parallel Effect).</p>
+<h2 id="cancellation">Cancellation</h2>
+<p>Cancelling a Saga causes the cancellation of:</p>
+<ul>
+<li><p>The <em>main task</em> this means cancelling the current Effect where the Saga is blocked</p></li>
+<li><p>All attached forks that are still executing</p></li>
+</ul>
+<p><strong>WIP</strong></p>
+<h2 id="detached-forks-using-spawn">Detached forks (using <code>spawn</code>)</h2>
+<p>Detached forks live in their own execution context. A parent doesn't wait for detached forks to terminate. Uncaught<br />
+errors from spawned tasks are not bubbled up to the parent. And cancelling a parent doesn't automatically cancel detached<br />
+forks (you need to cancel them explicitly).</p>
+<p>In short, detached forks behave like root Sagas started directly using the <code>middleware.run</code> API.</p>
+<p><strong>WIP</strong></p>
+	</div>
+</body>
+</html>

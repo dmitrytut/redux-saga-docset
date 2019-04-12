@@ -1,0 +1,270 @@
+
+<!DOCTYPE HTML>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+		<meta name=viewport content='width=device-width,user-scalable=no,minimum-scale=1.0,maximum-scale=1.0' />
+		<link media="all" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/github-markdown-css/2.9.0/github-markdown.min.css" type="text/css" />
+		<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/github.min.css" type="text/css" media="all" />
+    <title></title>
+</head>
+<body>
+	<div class="markdown-body">
+		<h1 id="beginner-tutorial">Beginner Tutorial</h1>
+<h2 id="objectives-of-this-tutorial">Objectives of this tutorial</h2>
+<p>This tutorial attempts to introduce redux-saga in a (hopefully) accessible way.</p>
+<p>For our getting started tutorial, we are going to use the trivial Counter demo from the Redux repo. The application is quite basic but is a good fit to illustrate the basic concepts of redux-saga without being lost in excessive details.</p>
+<h3 id="the-initial-setup">The initial setup</h3>
+<p>Before we start, clone the <a href="https://github.com/redux-saga/redux-saga-beginner-tutorial">tutorial repository</a>.</p>
+<blockquote>
+  <p>The final code of this tutorial is located in the <code>sagas</code> branch.</p>
+</blockquote>
+<p>Then in the command line, run:</p>
+<pre><code class="sh language-sh"><span class="hljs-meta">$</span><span class="bash"> <span class="hljs-built_in">cd</span> redux-saga-beginner-tutorial</span>
+<span class="hljs-meta">$</span><span class="bash"> npm install</span></code></pre>
+<p>To start the application, run:</p>
+<pre><code class="sh language-sh">$ <span class="hljs-built_in">npm</span> start</code></pre>
+<p>We are starting with the most basic use case: 2 buttons to <code>Increment</code> and <code>Decrement</code> a counter. Later, we will introduce asynchronous calls.</p>
+<p>If things go well, you should see 2 buttons <code>Increment</code> and <code>Decrement</code> along with a message below showing <code>Counter: 0</code>.</p>
+<blockquote>
+  <p>In case you encountered an issue with running the application. Feel free to create an issue on the <a href="https://github.com/redux-saga/redux-saga-beginner-tutorial/issues">tutorial repo</a>.</p>
+</blockquote>
+<h2 id="hello-sagas">Hello Sagas!</h2>
+<p>We are going to create our first Saga. Following the tradition, we will write our 'Hello, world' version for Sagas.</p>
+<p>Create a file <code>sagas.js</code> then add the following snippet:</p>
+<pre><code class="javascript language-javascript"><span class="hljs-keyword">export</span> <span class="hljs-function"><span class="hljs-keyword">function</span>* <span class="hljs-title">helloSaga</span>(<span class="hljs-params"></span>) </span>{
+  <span class="hljs-built_in">console</span>.log(<span class="hljs-string">'Hello Sagas!'</span>)
+}</code></pre>
+<p>So nothing scary, just a normal function (except for the <code>*</code>). All it does is print a greeting message into the console.</p>
+<p>In order to run our Saga, we need to:</p>
+<ul>
+<li>create a Saga middleware with a list of Sagas to run (so far we have only one <code>helloSaga</code>)</li>
+<li>connect the Saga middleware to the Redux store</li>
+</ul>
+<p>We will make the changes to <code>main.js</code>:</p>
+<pre><code class="javascript language-javascript"><span class="hljs-comment">// ...</span>
+<span class="hljs-keyword">import</span> { createStore, applyMiddleware } <span class="hljs-keyword">from</span> <span class="hljs-string">'redux'</span>
+<span class="hljs-keyword">import</span> createSagaMiddleware <span class="hljs-keyword">from</span> <span class="hljs-string">'redux-saga'</span>
+
+<span class="hljs-comment">// ...</span>
+<span class="hljs-keyword">import</span> { helloSaga } <span class="hljs-keyword">from</span> <span class="hljs-string">'./sagas'</span>
+
+<span class="hljs-keyword">const</span> sagaMiddleware = createSagaMiddleware()
+<span class="hljs-keyword">const</span> store = createStore(
+  reducer,
+  applyMiddleware(sagaMiddleware)
+)
+sagaMiddleware.run(helloSaga)
+
+<span class="hljs-keyword">const</span> action = <span class="hljs-function"><span class="hljs-params">type</span> =&gt;</span> store.dispatch({<span class="hljs-keyword">type</span>})
+
+<span class="hljs-comment">// rest unchanged</span></code></pre>
+<p>First we import our Saga from the <code>./sagas</code> module. Then we create a middleware using the factory function <code>createSagaMiddleware</code> exported by the <code>redux-saga</code> library.</p>
+<p>Before running our <code>helloSaga</code>, we must connect our middleware to the Store using <code>applyMiddleware</code>. Then we can use the <code>sagaMiddleware.run(helloSaga)</code> to start our Saga.</p>
+<p>So far, our Saga does nothing special. It just logs a message then exits.</p>
+<h2 id="making-asynchronous-calls">Making Asynchronous calls</h2>
+<p>Now let's add something closer to the original Counter demo. To illustrate asynchronous calls, we will add another button to increment the counter 1 second after the click.</p>
+<p>First things first, we'll provide an additional button and a callback <code>onIncrementAsync</code> to the UI component.</p>
+<pre><code class="javascript language-javascript"><span class="xml">const Counter = (</span><span class="hljs-template-variable">{ value, onIncrement, onDecrement, onIncrementAsync }</span><span class="xml">) =&gt;
+  <span class="hljs-tag">&lt;<span class="hljs-name">div</span>&gt;</span>
+    <span class="hljs-tag">&lt;<span class="hljs-name">button</span> <span class="hljs-attr">onClick</span>=</span></span><span class="hljs-template-variable">{onIncrementAsync}</span><span class="xml"><span class="hljs-tag">&gt;</span>
+      Increment after 1 second
+    <span class="hljs-tag">&lt;/<span class="hljs-name">button</span>&gt;</span>
+    </span><span class="hljs-template-variable">{' '}</span><span class="xml">
+    <span class="hljs-tag">&lt;<span class="hljs-name">button</span> <span class="hljs-attr">onClick</span>=</span></span><span class="hljs-template-variable">{onIncrement}</span><span class="xml"><span class="hljs-tag">&gt;</span>
+      Increment
+    <span class="hljs-tag">&lt;/<span class="hljs-name">button</span>&gt;</span>
+    </span><span class="hljs-template-variable">{' '}</span><span class="xml">
+    <span class="hljs-tag">&lt;<span class="hljs-name">button</span> <span class="hljs-attr">onClick</span>=</span></span><span class="hljs-template-variable">{onDecrement}</span><span class="xml"><span class="hljs-tag">&gt;</span>
+      Decrement
+    <span class="hljs-tag">&lt;/<span class="hljs-name">button</span>&gt;</span>
+    <span class="hljs-tag">&lt;<span class="hljs-name">hr</span> /&gt;</span>
+    <span class="hljs-tag">&lt;<span class="hljs-name">div</span>&gt;</span>
+      Clicked: </span><span class="hljs-template-variable">{value}</span><span class="xml"> times
+    <span class="hljs-tag">&lt;/<span class="hljs-name">div</span>&gt;</span>
+  <span class="hljs-tag">&lt;/<span class="hljs-name">div</span>&gt;</span></span></code></pre>
+<p>Next we should connect the <code>onIncrementAsync</code> of the Component to a Store action.</p>
+<p>We will modify the <code>main.js</code> module as follows</p>
+<pre><code class="javascript language-javascript"><span class="hljs-function"><span class="hljs-keyword">function</span> <span class="hljs-title">render</span>(<span class="hljs-params"></span>) </span>{
+  ReactDOM.render(
+    &lt;Counter
+      value={store.getState()}
+      onIncrement={<span class="hljs-function"><span class="hljs-params">()</span> =&gt;</span> action(<span class="hljs-string">'INCREMENT'</span>)}
+      onDecrement={<span class="hljs-function"><span class="hljs-params">()</span> =&gt;</span> action(<span class="hljs-string">'DECREMENT'</span>)}
+      onIncrementAsync={<span class="hljs-function"><span class="hljs-params">()</span> =&gt;</span> action(<span class="hljs-string">'INCREMENT_ASYNC'</span>)} /&gt;,
+    <span class="hljs-built_in">document</span>.getElementById(<span class="hljs-string">'root'</span>)
+  )
+}</code></pre>
+<p>Note that unlike in redux-thunk, our component dispatches a plain object action.</p>
+<p>Now we will introduce another Saga to perform the asynchronous call. Our use case is as follows:</p>
+<blockquote>
+  <p>On each <code>INCREMENT_ASYNC</code> action, we want to start a task that will do the following</p>
+</blockquote>
+<blockquote>
+  <ul>
+  <li>Wait 1 second then increment the counter</li>
+  </ul>
+</blockquote>
+<p>Add the following code to the <code>sagas.js</code> module:</p>
+<pre><code class="javascript language-javascript"><span class="hljs-keyword">import</span> { put, takeEvery } <span class="hljs-keyword">from</span> <span class="hljs-string">'redux-saga/effects'</span>
+
+<span class="hljs-keyword">const</span> delay = <span class="hljs-function">(<span class="hljs-params">ms</span>) =&gt;</span> <span class="hljs-keyword">new</span> <span class="hljs-built_in">Promise</span>(<span class="hljs-function"><span class="hljs-params">res</span> =&gt;</span> setTimeout(res, ms))
+
+<span class="hljs-comment">// ...</span>
+
+<span class="hljs-comment">// Our worker Saga: will perform the async increment task</span>
+<span class="hljs-keyword">export</span> <span class="hljs-function"><span class="hljs-keyword">function</span>* <span class="hljs-title">incrementAsync</span>(<span class="hljs-params"></span>) </span>{
+  <span class="hljs-keyword">yield</span> delay(<span class="hljs-number">1000</span>)
+  <span class="hljs-keyword">yield</span> put({ <span class="hljs-attr">type</span>: <span class="hljs-string">'INCREMENT'</span> })
+}
+
+<span class="hljs-comment">// Our watcher Saga: spawn a new incrementAsync task on each INCREMENT_ASYNC</span>
+<span class="hljs-keyword">export</span> <span class="hljs-function"><span class="hljs-keyword">function</span>* <span class="hljs-title">watchIncrementAsync</span>(<span class="hljs-params"></span>) </span>{
+  <span class="hljs-keyword">yield</span> takeEvery(<span class="hljs-string">'INCREMENT_ASYNC'</span>, incrementAsync)
+}</code></pre>
+<p>Time for some explanations.</p>
+<p>We create a <code>delay</code> function that returns a <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise">Promise</a> that will resolve after a specified number of milliseconds. We'll use this function to <em>block</em> the Generator.</p>
+<p>Sagas are implemented as <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/function*">Generator functions</a> that <em>yield</em> objects to the redux-saga middleware. The yielded objects are a kind of instruction to be interpreted by the middleware. When a Promise is yielded to the middleware, the middleware will suspend the Saga until the Promise completes. In the above example, the <code>incrementAsync</code> Saga is suspended until the Promise returned by <code>delay</code> resolves, which will happen after 1 second.</p>
+<p>Once the Promise is resolved, the middleware will resume the Saga, executing code until the next yield. In this example, the next statement is another yielded object: the result of calling <code>put({type: 'INCREMENT'})</code>, which instructs the middleware to dispatch an <code>INCREMENT</code> action.</p>
+<p><code>put</code> is one example of what we call an <em>Effect</em>. Effects are plain JavaScript objects which contain instructions to be fulfilled by the middleware. When a middleware retrieves an Effect yielded by a Saga, the Saga is paused until the Effect is fulfilled.</p>
+<p>So to summarize, the <code>incrementAsync</code> Saga sleeps for 1 second via the call to <code>delay(1000)</code>, then dispatches an <code>INCREMENT</code> action.</p>
+<p>Next, we created another Saga <code>watchIncrementAsync</code>. We use <code>takeEvery</code>, a helper function provided by <code>redux-saga</code>, to listen for dispatched <code>INCREMENT_ASYNC</code> actions and run <code>incrementAsync</code> each time.</p>
+<p>Now we have 2 Sagas, and we need to start them both at once. To do that, we'll add a <code>rootSaga</code> that is responsible for starting our other Sagas. In the same file <code>sagas.js</code>, refactor the file as follows:</p>
+<pre><code class="javascript language-javascript"><span class="hljs-keyword">import</span> { put, takeEvery, all } <span class="hljs-keyword">from</span> <span class="hljs-string">'redux-saga/effects'</span>
+
+<span class="hljs-keyword">const</span> delay = <span class="hljs-function">(<span class="hljs-params">ms</span>) =&gt;</span> <span class="hljs-keyword">new</span> <span class="hljs-built_in">Promise</span>(<span class="hljs-function"><span class="hljs-params">res</span> =&gt;</span> setTimeout(res, ms))
+
+<span class="hljs-function"><span class="hljs-keyword">function</span>* <span class="hljs-title">helloSaga</span>(<span class="hljs-params"></span>) </span>{
+  <span class="hljs-built_in">console</span>.log(<span class="hljs-string">'Hello Sagas!'</span>)
+}
+
+<span class="hljs-keyword">export</span> <span class="hljs-function"><span class="hljs-keyword">function</span>* <span class="hljs-title">incrementAsync</span>(<span class="hljs-params"></span>) </span>{
+  <span class="hljs-keyword">yield</span> delay(<span class="hljs-number">1000</span>)
+  <span class="hljs-keyword">yield</span> put({ <span class="hljs-attr">type</span>: <span class="hljs-string">'INCREMENT'</span> })
+}
+
+<span class="hljs-keyword">export</span> <span class="hljs-function"><span class="hljs-keyword">function</span>* <span class="hljs-title">watchIncrementAsync</span>(<span class="hljs-params"></span>) </span>{
+  <span class="hljs-keyword">yield</span> takeEvery(<span class="hljs-string">'INCREMENT_ASYNC'</span>, incrementAsync)
+}
+
+<span class="hljs-comment">// notice how we now only export the rootSaga</span>
+<span class="hljs-comment">// single entry point to start all Sagas at once</span>
+<span class="hljs-keyword">export</span> <span class="hljs-keyword">default</span> <span class="hljs-function"><span class="hljs-keyword">function</span>* <span class="hljs-title">rootSaga</span>(<span class="hljs-params"></span>) </span>{
+  <span class="hljs-keyword">yield</span> all([
+    helloSaga(),
+    watchIncrementAsync()
+  ])
+}</code></pre>
+<p>This Saga yields an array with the results of calling our two sagas, <code>helloSaga</code> and <code>watchIncrementAsync</code>. This means the two resulting Generators will be started in parallel. Now we only have to invoke <code>sagaMiddleware.run</code> on the root Saga in <code>main.js</code>.</p>
+<pre><code class="javascript language-javascript"><span class="hljs-comment">// ...</span>
+<span class="hljs-keyword">import</span> rootSaga from <span class="hljs-string">'./sagas'</span>
+
+<span class="hljs-keyword">const</span> sagaMiddleware = createSagaMiddleware()
+<span class="hljs-keyword">const</span> store = ...
+sagaMiddleware.<span class="hljs-built_in">run</span>(rootSaga)
+
+<span class="hljs-comment">// ...</span></code></pre>
+<h2 id="making-our-code-testable">Making our code testable</h2>
+<p>We want to test our <code>incrementAsync</code> Saga to make sure it performs the desired task.</p>
+<p>Create another file <code>sagas.spec.js</code>:</p>
+<pre><code class="javascript language-javascript"><span class="hljs-keyword">import</span> test <span class="hljs-keyword">from</span> <span class="hljs-string">'tape'</span>;
+
+<span class="hljs-keyword">import</span> { incrementAsync } <span class="hljs-keyword">from</span> <span class="hljs-string">'./sagas'</span>
+
+test(<span class="hljs-string">'incrementAsync Saga test'</span>, <span class="hljs-function"><span class="hljs-params">(<span class="hljs-built_in">assert</span>)</span> =&gt;</span> {
+  const gen = incrementAsync()
+
+  // now what ?
+});</code></pre>
+<p><code>incrementAsync</code> is a generator function. When run, it returns an iterator object, and the iterator's <code>next</code> method returns an object with the following shape</p>
+<pre><code class="javascript language-javascript">gen.next() // =&gt; { done: <span class="hljs-type">boolean</span>, <span class="hljs-keyword">value</span>: <span class="hljs-keyword">any</span> }</code></pre>
+<p>The <code>value</code> field contains the yielded expression, i.e. the result of the expression after<br />
+the <code>yield</code>. The <code>done</code> field indicates if the generator has terminated or if there are still<br />
+more 'yield' expressions.</p>
+<p>In the case of <code>incrementAsync</code>, the generator yields 2 values consecutively:</p>
+<ol>
+<li><code>yield delay(1000)</code></li>
+<li><code>yield put({type: 'INCREMENT'})</code></li>
+</ol>
+<p>So if we invoke the next method of the generator 3 times consecutively we get the following<br />
+results:</p>
+<pre><code class="javascript language-javascript"><span class="hljs-string">gen.next()</span> <span class="hljs-string">//</span> <span class="hljs-string">=&gt;</span> <span class="hljs-string">{</span> <span class="hljs-attr">done:</span> <span class="hljs-literal">false</span><span class="hljs-string">,</span> <span class="hljs-attr">value:</span> <span class="hljs-string">&lt;result</span> <span class="hljs-string">of</span> <span class="hljs-string">calling</span> <span class="hljs-string">delay(1000)&gt;</span> <span class="hljs-string">}</span>
+<span class="hljs-string">gen.next()</span> <span class="hljs-string">//</span> <span class="hljs-string">=&gt;</span> <span class="hljs-string">{</span> <span class="hljs-attr">done:</span> <span class="hljs-literal">false</span><span class="hljs-string">,</span> <span class="hljs-attr">value:</span> <span class="hljs-string">&lt;result</span> <span class="hljs-string">of</span> <span class="hljs-string">calling</span> <span class="hljs-string">put({type:</span> <span class="hljs-string">'INCREMENT'</span><span class="hljs-string">})&gt;</span> <span class="hljs-string">}</span>
+<span class="hljs-string">gen.next()</span> <span class="hljs-string">//</span> <span class="hljs-string">=&gt;</span> <span class="hljs-string">{</span> <span class="hljs-attr">done:</span> <span class="hljs-literal">true</span><span class="hljs-string">,</span> <span class="hljs-attr">value:</span> <span class="hljs-string">undefined</span> <span class="hljs-string">}</span></code></pre>
+<p>The first 2 invocations return the results of the yield expressions. On the 3rd invocation<br />
+since there is no more yield the <code>done</code> field is set to true. And since the <code>incrementAsync</code><br />
+Generator doesn't return anything (no <code>return</code> statement), the <code>value</code> field is set to<br />
+<code>undefined</code>.</p>
+<p>So now, in order to test the logic inside <code>incrementAsync</code>, we'll have to iterate<br />
+over the returned Generator and check the values yielded by the generator.</p>
+<pre><code class="javascript language-javascript"><span class="hljs-keyword">import</span> test <span class="hljs-keyword">from</span> <span class="hljs-string">'tape'</span>;
+
+<span class="hljs-keyword">import</span> { incrementAsync } <span class="hljs-keyword">from</span> <span class="hljs-string">'./sagas'</span>
+
+test(<span class="hljs-string">'incrementAsync Saga test'</span>, <span class="hljs-function"><span class="hljs-params">(<span class="hljs-built_in">assert</span>)</span> =&gt;</span> {
+  const gen = incrementAsync()
+
+  <span class="hljs-built_in">assert</span>.deepEqual(
+    gen.<span class="hljs-built_in">next</span>(),
+    { <span class="hljs-name">done</span>: <span class="hljs-literal">false</span>, <span class="hljs-name">value</span>: ??? },
+    <span class="hljs-string">'incrementAsync should return a Promise that will resolve after 1 second'</span>
+  )
+});</code></pre>
+<p>The issue is how do we test the return value of <code>delay</code>? We can't do a simple equality test<br />
+on Promises. If <code>delay</code> returned a <em>normal</em> value, things would've been easier to test.</p>
+<p>Well, <code>redux-saga</code> provides a way to make the above statement possible. Instead of calling<br />
+<code>delay(1000)</code> directly inside <code>incrementAsync</code>, we'll call it <em>indirectly</em> and export it<br />
+to make a subsequent deep comparison possible:</p>
+<pre><code class="javascript language-javascript"><span class="hljs-keyword">import</span> { put, takeEvery, all, call } <span class="hljs-keyword">from</span> <span class="hljs-string">'redux-saga/effects'</span>
+
+<span class="hljs-keyword">export</span> <span class="hljs-keyword">const</span> delay = <span class="hljs-function">(<span class="hljs-params">ms</span>) =&gt;</span> <span class="hljs-keyword">new</span> <span class="hljs-built_in">Promise</span>(<span class="hljs-function"><span class="hljs-params">res</span> =&gt;</span> setTimeout(res, ms))
+
+<span class="hljs-comment">// ...</span>
+
+<span class="hljs-keyword">export</span> <span class="hljs-function"><span class="hljs-keyword">function</span>* <span class="hljs-title">incrementAsync</span>(<span class="hljs-params"></span>) </span>{
+  <span class="hljs-comment">// use the call Effect</span>
+  <span class="hljs-keyword">yield</span> call(delay, <span class="hljs-number">1000</span>)
+  <span class="hljs-keyword">yield</span> put({ <span class="hljs-attr">type</span>: <span class="hljs-string">'INCREMENT'</span> })
+}</code></pre>
+<p>Instead of doing <code>yield delay(1000)</code>, we're now doing <code>yield call(delay, 1000)</code>. What's the difference?</p>
+<p>In the first case, the yield expression <code>delay(1000)</code> is evaluated before it gets passed to the caller of <code>next</code> (the caller could be the middleware when running our code. It could also be our test code which runs the Generator function and iterates over the returned Generator). So what the caller gets is a Promise, like in the test code above.</p>
+<p>In the second case, the yield expression <code>call(delay, 1000)</code> is what gets passed to the caller of <code>next</code>. <code>call</code> just like <code>put</code>, returns an Effect which instructs the middleware to call a given function with the given arguments. In fact, neither <code>put</code> nor <code>call</code> performs any dispatch or asynchronous call by themselves, they return plain JavaScript objects.</p>
+<pre><code class="javascript language-javascript"><span class="hljs-function"><span class="hljs-title">put</span><span class="hljs-params">({type: <span class="hljs-string">'INCREMENT'</span>})</span></span> <span class="hljs-comment">// =&gt; { PUT: {type: 'INCREMENT'} }</span>
+<span class="hljs-function"><span class="hljs-title">call</span><span class="hljs-params">(delay, <span class="hljs-number">1000</span>)</span></span>        <span class="hljs-comment">// =&gt; { CALL: {fn: delay, args: [1000]}}</span></code></pre>
+<p>What happens is that the middleware examines the type of each yielded Effect then decides how to fulfill that Effect. If the Effect type is a <code>PUT</code> then it will dispatch an action to the Store. If the Effect is a <code>CALL</code> then it'll call the given function.</p>
+<p>This separation between Effect creation and Effect execution makes it possible to test our Generator in a surprisingly easy way:</p>
+<pre><code class="javascript language-javascript"><span class="hljs-keyword">import</span> test <span class="hljs-keyword">from</span> <span class="hljs-string">'tape'</span>;
+
+<span class="hljs-keyword">import</span> { put, <span class="hljs-keyword">call</span> } <span class="hljs-keyword">from</span> <span class="hljs-string">'redux-saga/effects'</span>
+<span class="hljs-keyword">import</span> { incrementAsync, delay } <span class="hljs-keyword">from</span> <span class="hljs-string">'./sagas'</span>
+
+test(<span class="hljs-string">'incrementAsync Saga test'</span>, (<span class="hljs-keyword">assert</span>) =&gt; {
+  const gen = incrementAsync()
+
+  <span class="hljs-keyword">assert</span>.deepEqual(
+    gen.next().<span class="hljs-keyword">value</span>,
+    <span class="hljs-keyword">call</span>(delay, <span class="hljs-number">1000</span>),
+    <span class="hljs-string">'incrementAsync Saga must call delay(1000)'</span>
+  )
+
+  <span class="hljs-keyword">assert</span>.deepEqual(
+    gen.next().<span class="hljs-keyword">value</span>,
+    put({<span class="hljs-keyword">type</span>: <span class="hljs-string">'INCREMENT'</span>}),
+    <span class="hljs-string">'incrementAsync Saga must dispatch an INCREMENT action'</span>
+  )
+
+  <span class="hljs-keyword">assert</span>.deepEqual(
+    gen.next(),
+    { done: <span class="hljs-keyword">true</span>, <span class="hljs-keyword">value</span>: undefined },
+    <span class="hljs-string">'incrementAsync Saga must be done'</span>
+  )
+
+  <span class="hljs-keyword">assert</span>.<span class="hljs-keyword">end</span>()
+});</code></pre>
+<p>Since <code>put</code> and <code>call</code> return plain objects, we can reuse the same functions in our test code. And to test the logic of <code>incrementAsync</code>, we iterate over the generator and do <code>deepEqual</code> tests on its values.</p>
+<p>In order to run the above test, run:</p>
+<pre><code class="sh language-sh"><span class="hljs-meta">$</span><span class="bash"> npm <span class="hljs-built_in">test</span></span></code></pre>
+<p>which should report the results on the console.</p>
+	</div>
+</body>
+</html>

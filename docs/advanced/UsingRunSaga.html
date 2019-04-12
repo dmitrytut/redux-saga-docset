@@ -1,0 +1,43 @@
+
+<!DOCTYPE HTML>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+		<meta name=viewport content='width=device-width,user-scalable=no,minimum-scale=1.0,maximum-scale=1.0' />
+		<link media="all" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/github-markdown-css/2.9.0/github-markdown.min.css" type="text/css" />
+		<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/github.min.css" type="text/css" media="all" />
+    <title></title>
+</head>
+<body>
+	<div class="markdown-body">
+		<h1 id="connecting-sagas-to-external-inputoutput">Connecting Sagas to external Input/Output</h1>
+<p>We saw that <code>take</code> Effects are resolved by waiting for actions to be dispatched to the Store. And that <code>put</code> Effects are resolved by dispatching the actions provided as argument.</p>
+<p>When a Saga is started (either at startup or later dynamically), the middleware automatically connects its <code>take</code>/<code>put</code> to the store. The 2 Effects can be seen as a sort of Input/Output to the Saga.</p>
+<p><code>redux-saga</code> provides a way to run a Saga outside of the Redux middleware environment and connect it to a custom Input/Output.</p>
+<pre><code class="js language-js">import { runSaga, stdChannel } from <span class="hljs-string">'redux-saga'</span>
+
+const emitter = <span class="hljs-keyword">new</span> EventEmitter()
+const channel = stdChannel()
+emitter.<span class="hljs-keyword">on</span>(<span class="hljs-string">"action"</span>, channel.<span class="hljs-keyword">put</span>)
+
+const myIO = {
+  // this will <span class="hljs-keyword">be</span> used <span class="hljs-keyword">to</span> orchestrate take <span class="hljs-built_in">and</span> <span class="hljs-keyword">put</span> Effects
+  channel,
+  // this will <span class="hljs-keyword">be</span> used <span class="hljs-keyword">to</span> <span class="hljs-built_in">resolve</span> <span class="hljs-keyword">put</span> Effects
+  dispatch(output) {
+    emitter.emit(<span class="hljs-string">"action"</span>, output)
+  },
+  // this will <span class="hljs-keyword">be</span> used <span class="hljs-keyword">to</span> <span class="hljs-built_in">resolve</span> select Effects
+  getState() {
+    <span class="hljs-keyword">return</span> state
+  }
+}
+
+runSaga(
+  myIO,
+  <span class="hljs-function"><span class="hljs-keyword">function</span>* <span class="hljs-title">saga</span><span class="hljs-params">()</span> { ... },</span>
+)</code></pre>
+<p>For more info, see the <a href="https://redux-saga.js.org/docs/api/index.html##runsagaoptions-saga-args">API docs</a>, <a href="./Channels.md">Channels</a>, <a href="https://codesandbox.io/s/1yq1lx77jq">demo</a></p>
+	</div>
+</body>
+</html>

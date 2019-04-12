@@ -1,0 +1,69 @@
+
+<!DOCTYPE HTML>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+		<meta name=viewport content='width=device-width,user-scalable=no,minimum-scale=1.0,maximum-scale=1.0' />
+		<link media="all" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/github-markdown-css/2.9.0/github-markdown.min.css" type="text/css" />
+		<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/github.min.css" type="text/css" media="all" />
+    <title></title>
+</head>
+<body>
+	<div class="markdown-body">
+		<h1 id="dispatching-actions-to-the-store">Dispatching actions to the store</h1>
+<p>Taking the previous example further, let's say that after each save, we want to dispatch some action<br />
+to notify the Store that the fetch has succeeded (we'll omit the failure case for the moment).</p>
+<p>We could pass the Store's <code>dispatch</code> function to the Generator. Then the<br />
+Generator could invoke it after receiving the fetch response:</p>
+<pre><code class="javascript language-javascript"><span class="hljs-comment">// ...</span>
+
+<span class="hljs-function"><span class="hljs-keyword">function</span>* <span class="hljs-title">fetchProducts</span>(<span class="hljs-params">dispatch</span>) </span>{
+  <span class="hljs-keyword">const</span> products = <span class="hljs-keyword">yield</span> call(Api.fetch, <span class="hljs-string">'/products'</span>)
+  dispatch({ <span class="hljs-attr">type</span>: <span class="hljs-string">'PRODUCTS_RECEIVED'</span>, products })
+}</code></pre>
+<p>However, this solution has the same drawbacks as invoking functions directly from inside the Generator (as discussed in the previous section). If we want to test that <code>fetchProducts</code> performs<br />
+the dispatch after receiving the AJAX response, we'll need again to mock the <code>dispatch</code><br />
+function.</p>
+<p>Instead, we need the same declarative solution. Create a plain JavaScript Object to instruct the<br />
+middleware that we need to dispatch some action, and let the middleware perform the real<br />
+dispatch. This way we can test the Generator's dispatch in the same way: by inspecting<br />
+the yielded Effect and making sure it contains the correct instructions.</p>
+<p>The library provides, for this purpose, another function <code>put</code> which creates the dispatch<br />
+Effect.</p>
+<pre><code class="javascript language-javascript"><span class="hljs-keyword">import</span> { call, put } <span class="hljs-keyword">from</span> <span class="hljs-string">'redux-saga/effects'</span>
+<span class="hljs-comment">// ...</span>
+
+<span class="hljs-function"><span class="hljs-keyword">function</span>* <span class="hljs-title">fetchProducts</span>(<span class="hljs-params"></span>) </span>{
+  <span class="hljs-keyword">const</span> products = <span class="hljs-keyword">yield</span> call(Api.fetch, <span class="hljs-string">'/products'</span>)
+  <span class="hljs-comment">// create and yield a dispatch Effect</span>
+  <span class="hljs-keyword">yield</span> put({ <span class="hljs-attr">type</span>: <span class="hljs-string">'PRODUCTS_RECEIVED'</span>, products })
+}</code></pre>
+<p>Now, we can test the Generator easily as in the previous section</p>
+<pre><code class="javascript language-javascript"><span class="hljs-keyword">import</span> { <span class="hljs-keyword">call</span>, put } <span class="hljs-keyword">from</span> <span class="hljs-string">'redux-saga/effects'</span>
+<span class="hljs-keyword">import</span> Api <span class="hljs-keyword">from</span> <span class="hljs-string">'...'</span>
+
+const iterator = fetchProducts()
+
+<span class="hljs-comment">// expects a call instruction</span>
+assert.deepEqual(
+  iterator.<span class="hljs-keyword">next</span>().value,
+  <span class="hljs-keyword">call</span>(Api.fetch, <span class="hljs-string">'/products'</span>),
+  <span class="hljs-string">"fetchProducts should yield an Effect call(Api.fetch, './products')"</span>
+)
+
+<span class="hljs-comment">// create a fake response</span>
+const products = {}
+
+<span class="hljs-comment">// expects a dispatch instruction</span>
+assert.deepEqual(
+  iterator.<span class="hljs-keyword">next</span>(products).value,
+  put({ type: <span class="hljs-string">'PRODUCTS_RECEIVED'</span>, products }),
+  <span class="hljs-string">"fetchProducts should yield an Effect put({ type: 'PRODUCTS_RECEIVED', products })"</span>
+)</code></pre>
+<p>Note how we pass the fake response to the Generator via its <code>next</code> method. Outside the<br />
+middleware environment, we have total control over the Generator, we can simulate a<br />
+real environment by mocking results and resuming the Generator with them. Mocking<br />
+data is a lot easier than mocking functions and spying calls.</p>
+	</div>
+</body>
+</html>

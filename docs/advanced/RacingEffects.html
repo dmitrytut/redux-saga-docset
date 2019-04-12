@@ -1,0 +1,58 @@
+
+<!DOCTYPE HTML>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+		<meta name=viewport content='width=device-width,user-scalable=no,minimum-scale=1.0,maximum-scale=1.0' />
+		<link media="all" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/github-markdown-css/2.9.0/github-markdown.min.css" type="text/css" />
+		<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/github.min.css" type="text/css" media="all" />
+    <title></title>
+</head>
+<body>
+	<div class="markdown-body">
+		<h2 id="starting-a-race-between-multiple-effects">Starting a race between multiple Effects</h2>
+<p>Sometimes we start multiple tasks in parallel but we don't want to wait for all of them, we just need<br />
+to get the <em>winner</em>: the first one that resolves (or rejects). The <code>race</code> Effect offers a way of<br />
+triggering a race between multiple Effects.</p>
+<p>The following sample shows a task that triggers a remote fetch request, and constrains the response within a<br />
+1 second timeout.</p>
+<pre><code class="javascript language-javascript">import { race, <span class="hljs-keyword">call</span>, <span class="hljs-keyword">put</span>, delay } from <span class="hljs-string">'redux-saga/effects'</span>
+
+<span class="hljs-function"><span class="hljs-keyword">function</span>* <span class="hljs-title">fetchPostsWithTimeout</span><span class="hljs-params">()</span> {</span>
+  const {posts, timeout} = yield race({
+    post<span class="hljs-variable">s:</span> <span class="hljs-keyword">call</span>(fetchApi, <span class="hljs-string">'/posts'</span>),
+    timeou<span class="hljs-variable">t:</span> delay(<span class="hljs-number">1000</span>)
+  })
+
+  <span class="hljs-keyword">if</span> (posts)
+    yield <span class="hljs-keyword">put</span>({<span class="hljs-built_in">type</span>: <span class="hljs-string">'POSTS_RECEIVED'</span>, posts})
+  <span class="hljs-keyword">else</span>
+    yield <span class="hljs-keyword">put</span>({<span class="hljs-built_in">type</span>: <span class="hljs-string">'TIMEOUT_ERROR'</span>})
+}</code></pre>
+<p>Another useful feature of <code>race</code> is that it automatically cancels the loser Effects. For example,<br />
+suppose we have 2 UI buttons:</p>
+<ul>
+<li><p>The first starts a task in the background that runs in an endless loop <code>while (true)</code><br />
+(e.g. syncing some data with the server each x seconds).</p></li>
+<li><p>Once the background task is started, we enable a second button which will cancel the task</p></li>
+</ul>
+<pre><code class="javascript language-javascript"><span class="hljs-keyword">import</span> { race, take, call } <span class="hljs-keyword">from</span> <span class="hljs-string">'redux-saga/effects'</span>
+
+<span class="hljs-function"><span class="hljs-keyword">function</span>* <span class="hljs-title">backgroundTask</span>(<span class="hljs-params"></span>) </span>{
+  <span class="hljs-keyword">while</span> (<span class="hljs-literal">true</span>) { ... }
+}
+
+<span class="hljs-function"><span class="hljs-keyword">function</span>* <span class="hljs-title">watchStartBackgroundTask</span>(<span class="hljs-params"></span>) </span>{
+  <span class="hljs-keyword">while</span> (<span class="hljs-literal">true</span>) {
+    <span class="hljs-keyword">yield</span> take(<span class="hljs-string">'START_BACKGROUND_TASK'</span>)
+    <span class="hljs-keyword">yield</span> race({
+      <span class="hljs-attr">task</span>: call(backgroundTask),
+      <span class="hljs-attr">cancel</span>: take(<span class="hljs-string">'CANCEL_TASK'</span>)
+    })
+  }
+}</code></pre>
+<p>In the case a <code>CANCEL_TASK</code> action is dispatched, the <code>race</code> Effect will automatically cancel<br />
+<code>backgroundTask</code> by throwing a cancellation error inside it.</p>
+	</div>
+</body>
+</html>

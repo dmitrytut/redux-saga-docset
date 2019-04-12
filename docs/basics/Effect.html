@@ -1,0 +1,20 @@
+
+<!DOCTYPE HTML>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+		<meta name=viewport content='width=device-width,user-scalable=no,minimum-scale=1.0,maximum-scale=1.0' />
+		<link media="all" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/github-markdown-css/2.9.0/github-markdown.min.css" type="text/css" />
+		<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/github.min.css" type="text/css" media="all" />
+    <title></title>
+</head>
+<body>
+	<div class="markdown-body">
+		<h1 id="a-common-abstraction-effect">A common abstraction: Effect</h1>
+<p>To generalize, triggering Side Effects from inside a Saga is always done by yielding some declarative Effect. (You can also yield Promise directly, but this will make testing difficult as we saw in the first section.)</p>
+<p>What a Saga does is actually compose all those Effects together to implement the desired control flow. The most basic example is to sequence yielded Effects by putting the yields one after another. You can also use the familiar control flow operators (<code>if</code>, <code>while</code>, <code>for</code>) to implement more sophisticated control flows.</p>
+<p>We saw that using Effects like <code>call</code> and <code>put</code>, combined with high-level APIs like <code>takeEvery</code> allows us to achieve the same things as <code>redux-thunk</code>, but with the added benefit of easy testability.</p>
+<p>But <code>redux-saga</code> provides another advantage over <code>redux-thunk</code>. In the Advanced section you'll encounter some more powerful Effects that let you express complex control flows while still allowing the same testability benefit.</p>
+	</div>
+</body>
+</html>

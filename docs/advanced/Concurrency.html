@@ -1,0 +1,43 @@
+
+<!DOCTYPE HTML>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+		<meta name=viewport content='width=device-width,user-scalable=no,minimum-scale=1.0,maximum-scale=1.0' />
+		<link media="all" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/github-markdown-css/2.9.0/github-markdown.min.css" type="text/css" />
+		<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/github.min.css" type="text/css" media="all" />
+    <title></title>
+</head>
+<body>
+	<div class="markdown-body">
+		<h1 id="concurrency">Concurrency</h1>
+<p>In the basics section, we saw how to use the helper effects <code>takeEvery</code> and <code>takeLatest</code> in order to manage concurrency between Effects.</p>
+<p>In this section we'll see how those helpers could be implemented using the low-level Effects.</p>
+<h2 id="takeevery"><code>takeEvery</code></h2>
+<pre><code class="javascript language-javascript"><span class="hljs-keyword">import</span> {fork, take} <span class="hljs-keyword">from</span> <span class="hljs-string">"redux-saga/effects"</span>
+
+<span class="hljs-keyword">const</span> takeEvery = <span class="hljs-function">(<span class="hljs-params">pattern, saga, ...args</span>) =&gt;</span> fork(<span class="hljs-function"><span class="hljs-keyword">function</span>*(<span class="hljs-params"></span>) </span>{
+  <span class="hljs-keyword">while</span> (<span class="hljs-literal">true</span>) {
+    <span class="hljs-keyword">const</span> action = <span class="hljs-keyword">yield</span> take(pattern)
+    <span class="hljs-keyword">yield</span> fork(saga, ...args.concat(action))
+  }
+})</code></pre>
+<p><code>takeEvery</code> allows multiple <code>saga</code> tasks to be forked concurrently.</p>
+<h2 id="takelatest"><code>takeLatest</code></h2>
+<pre><code class="javascript language-javascript"><span class="hljs-keyword">import</span> {cancel, fork, take} <span class="hljs-keyword">from</span> <span class="hljs-string">"redux-saga/effects"</span>
+
+<span class="hljs-keyword">const</span> takeLatest = <span class="hljs-function">(<span class="hljs-params">pattern, saga, ...args</span>) =&gt;</span> fork(<span class="hljs-function"><span class="hljs-keyword">function</span>*(<span class="hljs-params"></span>) </span>{
+  <span class="hljs-keyword">let</span> lastTask
+  <span class="hljs-keyword">while</span> (<span class="hljs-literal">true</span>) {
+    <span class="hljs-keyword">const</span> action = <span class="hljs-keyword">yield</span> take(pattern)
+    <span class="hljs-keyword">if</span> (lastTask) {
+      <span class="hljs-keyword">yield</span> cancel(lastTask) <span class="hljs-comment">// cancel is no-op if the task has already terminated</span>
+    }
+    lastTask = <span class="hljs-keyword">yield</span> fork(saga, ...args.concat(action))
+  }
+})</code></pre>
+<p><code>takeLatest</code> doesn't allow multiple Saga tasks to be fired concurrently. As soon as it gets a new dispatched action, it cancels any previously-forked task (if still running).</p>
+<p><code>takeLatest</code> can be useful to handle AJAX requests where we want to only have the response to the latest request.</p>
+	</div>
+</body>
+</html>

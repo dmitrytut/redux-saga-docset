@@ -1,0 +1,20 @@
+{
+    "name": "redux-saga",
+    "package": "redux-saga",
+    "index": "index.html",
+    "selectors": {
+        ".markdown-body #introduction": "Section",
+        ".markdown-body #basic-concepts": "Section",
+        ".markdown-body #advanced": "Section",
+        ".markdown-body #recipes": "Section",
+        ".markdown-body #external-resources": "Section",
+        ".markdown-body #troubleshooting": "Section",
+        ".markdown-body #glossary": "Section",
+        ".markdown-body #api-reference": "Section",
+        "h1[id]": "Guide",
+        "h3 code": "Function"
+    },
+    "icon32x32": "Icon-32.png",
+    "allowJS": false,
+    "ExternalURL": "https://github.com/redux-saga/redux-saga/tree/master/docs"
+}

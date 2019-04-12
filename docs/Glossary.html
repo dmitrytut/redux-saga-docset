@@ -1,0 +1,68 @@
+
+<!DOCTYPE HTML>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+		<meta name=viewport content='width=device-width,user-scalable=no,minimum-scale=1.0,maximum-scale=1.0' />
+		<link media="all" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/github-markdown-css/2.9.0/github-markdown.min.css" type="text/css" />
+		<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/github.min.css" type="text/css" media="all" />
+    <title></title>
+</head>
+<body>
+	<div class="markdown-body">
+		<h1 id="glossary">Glossary</h1>
+<p>This is a glossary of the core terms in Redux Saga.</p>
+<h3 id="effect">Effect</h3>
+<p>An effect is a plain JavaScript Object containing some instructions to be executed by the saga middleware.</p>
+<p>You create effects using factory functions provided by the redux-saga library. For example you use<br />
+<code>call(myfunc, 'arg1', 'arg2')</code> to instruct the middleware to invoke <code>myfunc('arg1', 'arg2')</code> and return<br />
+the result back to the Generator that yielded the effect</p>
+<h3 id="task">Task</h3>
+<p>A task is like a process running in background. In a redux-saga based application there can be<br />
+multiple tasks running in parallel. You create tasks by using the <code>fork</code> function</p>
+<pre><code class="javascript language-javascript"><span class="hljs-keyword">import</span> {fork} <span class="hljs-keyword">from</span> <span class="hljs-string">"redux-saga/effects"</span>
+
+<span class="hljs-function"><span class="hljs-keyword">function</span>* <span class="hljs-title">saga</span>(<span class="hljs-params"></span>) </span>{
+  ...
+  const task = <span class="hljs-keyword">yield</span> fork(otherSaga, ...args)
+  ...
+}</code></pre>
+<h3 id="blockingnon-blocking-call">Blocking/Non-blocking call</h3>
+<p>A Blocking call means that the Saga yielded an Effect and will wait for the outcome of its execution before<br />
+resuming to the next instruction inside the yielding Generator.</p>
+<p>A Non-blocking call means that the Saga will resume immediately after yielding the Effect.</p>
+<p>For example</p>
+<pre><code class="javascript language-javascript"><span class="hljs-keyword">import</span> {call, cancel, <span class="hljs-keyword">join</span>, <span class="hljs-keyword">take</span>, put} from <span class="hljs-string">"redux-saga/effects"</span>
+
+function* saga() {
+  <span class="hljs-keyword">yield</span> <span class="hljs-keyword">take</span>(ACTION)              <span class="hljs-comment">// Blocking: will wait for the action</span>
+  <span class="hljs-keyword">yield</span> call(ApiFn, <span class="hljs-params">...</span>args)      <span class="hljs-comment">// Blocking: will wait for ApiFn (If ApiFn returns a Promise)</span>
+  <span class="hljs-keyword">yield</span> call(otherSaga, <span class="hljs-params">...</span>args)  <span class="hljs-comment">// Blocking: will wait for otherSaga to terminate</span>
+
+  <span class="hljs-keyword">yield</span> put(<span class="hljs-params">...</span>)                   <span class="hljs-comment">// Non-Blocking: will dispatch within internal scheduler</span>
+
+  const task = <span class="hljs-keyword">yield</span> fork(otherSaga, <span class="hljs-params">...</span>args)  <span class="hljs-comment">// Non-blocking: will not wait for otherSaga</span>
+  <span class="hljs-keyword">yield</span> cancel(task)                           <span class="hljs-comment">// Non-blocking: will resume immediately</span>
+  <span class="hljs-comment">// or</span>
+  <span class="hljs-keyword">yield</span> <span class="hljs-keyword">join</span>(task)                              <span class="hljs-comment">// Blocking: will wait for the task to terminate</span>
+}</code></pre>
+<h3 id="watcherworker">Watcher/Worker</h3>
+<p>refers to a way of organizing the control flow using two separate Sagas</p>
+<ul>
+<li><p>The watcher: will watch for dispatched actions and fork a worker on every action</p></li>
+<li><p>The worker: will handle the action and terminate</p></li>
+</ul>
+<p>example</p>
+<pre><code class="javascript language-javascript"><span class="hljs-function"><span class="hljs-keyword">function</span>* <span class="hljs-title">watcher</span>(<span class="hljs-params"></span>) </span>{
+  <span class="hljs-keyword">while</span> (<span class="hljs-literal">true</span>) {
+    <span class="hljs-keyword">const</span> action = <span class="hljs-keyword">yield</span> take(ACTION)
+    <span class="hljs-keyword">yield</span> fork(worker, action.payload)
+  }
+}
+
+<span class="hljs-function"><span class="hljs-keyword">function</span>* <span class="hljs-title">worker</span>(<span class="hljs-params">payload</span>) </span>{
+  <span class="hljs-comment">// ... do some stuff</span>
+}</code></pre>
+	</div>
+</body>
+</html>
